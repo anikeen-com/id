@@ -303,6 +303,16 @@ public function isEmailExisting(string $email): Result
 
 ## Billable
 
+### ManagesAddresses
+
+```php
+public function addresses(): Result
+public function createAddress(array $attributes = []): Result
+public function address(string $addressId): Result
+public function updateAddress(string $addressId, array $attributes = []): Result
+public function deleteAddress(string $addressId): Result
+```
+
 ### ManagesBalance
 
 ```php
@@ -316,7 +326,7 @@ public function charge(float $amount, string $paymentMethodId, array $options = 
 ```php
 public function invoices(): Result
 public function invoice(string $invoiceId): Result
-public function getInvoiceDownloadUrl(string $invoiceId): string
+public function getInvoiceTemporaryUrl(string $invoiceId): string
 ```
 
 ### ManagesOrders
@@ -356,6 +366,7 @@ public function createSubscription(array $attributes): Result
 public function checkoutSubscription(string $subscriptionId): Result
 public function revokeSubscription(string $subscriptionId): Result
 public function resumeSubscription(string $subscriptionId): Result
+public function deleteSubscription(string $subscriptionId): Result
 ```
 
 ### ManagesTaxation

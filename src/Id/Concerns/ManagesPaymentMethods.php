@@ -41,7 +41,7 @@ trait ManagesPaymentMethods
      */
     public function hasDefaultPaymentMethod(): bool
     {
-        return $this->defaultPaymentMethod()->count() > 0;
+        return (bool)$this->defaultPaymentMethod()->data;
     }
 
     /**
@@ -65,7 +65,7 @@ trait ManagesPaymentMethods
      */
     public function billingPortalUrl(string $returnUrl, array $options): string
     {
-        return $this->request('POST', 'v1/stripe/billing-portal', [
+        return $this->request('POST', 'v1/billing/portal', [
             'return_url' => $returnUrl,
             'options' => $options,
         ])->data->url;

@@ -27,6 +27,11 @@ trait ManagesOrders
      *
      * VAT is calculated based on the billing address and shown in the order response.
      *
+     * The billing and shipping addresses are each persisted as standalone Address entities
+     * in the database, but are also embedded (deep-copied) into the Order object itself
+     * rather than merely referenced. This guarantees that the order retains its own snapshot
+     * of both addresses for future reference.
+     *
      * @param array{
      *     billing_address: array{
      *          company_name: null|string,
@@ -91,6 +96,11 @@ trait ManagesOrders
      * Update given order from the current user.
      *
      * VAT is calculated based on the billing address and shown in the order response.
+     *
+     * The billing and shipping addresses are each persisted as standalone Address entities
+     * in the database, but are also embedded (deep-copied) into the Order object itself
+     * rather than merely referenced. This guarantees that the order retains its own snapshot
+     * of both addresses for future reference.
      *
      * @param string $orderId The order ID.
      * @param array{

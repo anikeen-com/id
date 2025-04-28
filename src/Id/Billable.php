@@ -3,6 +3,7 @@
 namespace Anikeen\Id;
 
 use Anikeen\Id\ApiOperations\Request;
+use Anikeen\Id\Concerns\ManagesAddresses;
 use Anikeen\Id\Concerns\ManagesBalance;
 use Anikeen\Id\Concerns\ManagesInvoices;
 use Anikeen\Id\Concerns\ManagesOrders;
@@ -17,6 +18,7 @@ use stdClass;
 
 trait Billable
 {
+    use ManagesAddresses;
     use ManagesBalance;
     use ManagesInvoices;
     use ManagesOrders;

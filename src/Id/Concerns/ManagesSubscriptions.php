@@ -100,4 +100,16 @@ trait ManagesSubscriptions
     {
         return $this->request('PUT', sprintf('v1/subscriptions/%s/resume', $subscriptionId));
     }
+
+    /**
+     * Delete a given subscription from the current user.
+     *
+     * @param string $subscriptionId The subscription ID.
+     * @throws RequestRequiresClientIdException
+     * @throws GuzzleException
+     */
+    public function deleteSubscription(string $subscriptionId): Result
+    {
+        return $this->request('DELETE', sprintf('v1/subscriptions/%s', $subscriptionId));
+    }
 }

@@ -35,14 +35,14 @@ trait ManagesInvoices
     }
 
     /**
-     * Get download url from given invoice.
+     * Get temporary download url from given invoice.
      *
      * @param string $invoiceId The invoice ID
      * @throws RequestRequiresClientIdException
      * @throws GuzzleException
      */
-    public function getInvoiceDownloadUrl(string $invoiceId): string
+    public function getInvoiceTemporaryUrl(string $invoiceId): string
     {
-        return $this->request('PUT', sprintf('v1/invoices/%s', $invoiceId))->data->download_url;
+        return $this->request('PUT', sprintf('v1/invoices/%s', $invoiceId))->data->temporary_url;
     }
 }
