@@ -9,12 +9,11 @@ PHP Anikeen ID API Client for Laravel 11+
 ## Table of contents
 
 1. [Installation](#installation)
-2. [Event Listener](#event-listener)
-3. [Configuration](#configuration)
-4. [General](#general)
-5. [Examples](#examples)
-6. [Documentation](#documentation)
-7. [Development](#Development)
+2. [Configuration](#configuration)
+3. [General](#general)
+4. [Examples](#examples)
+5. [Documentation](#documentation)
+6. [Development](#Development)
 
 ## Installation
 
@@ -22,19 +21,9 @@ PHP Anikeen ID API Client for Laravel 11+
 composer require anikeen/id
 ```
 
-## Event Listener
-
-In Laravel 11, the default EventServiceProvider provider was removed. Instead, add the listener using the listen method on the Event facade, in your `AppServiceProvider`
-
-```
-Event::listen(function (\SocialiteProviders\Manager\SocialiteWasCalled $event) {
-    $event->extendSocialite('anikeen-id', \Anikeen\Id\Socialite\Provider::class);
-});
-```
-
 ## Configuration
 
-Add environmental variables to your `.env`
+Add environmental variables to your `.env` file:
 
 ```
 ANIKEEN_ID_KEY=
@@ -44,7 +33,7 @@ ANIKEEN_ID_CALLBACK_URL=http://localhost/auth/callback
 
 You will need to add an entry to the services configuration file so that after config files are cached for usage in production environment (Laravel command `artisan config:cache`) all config is still available.
 
-**Add to `config/services.php`:**
+Add to `config/services.php` file:
 
 ```php
 'anikeen' => [
@@ -53,6 +42,19 @@ You will need to add an entry to the services configuration file so that after c
     'redirect' => env('ANIKEEN_ID_CALLBACK_URL'),
     'base_url' => env('ANIKEEN_ID_BASE_URL'),
 ],
+```
+
+### Event Listener
+
+In Laravel 11, the default EventServiceProvider provider was removed. Instead, add the listener using the listen method on the Event facade, in your `AppServiceProvider` boot method:
+
+```php
+public function boot(): void
+{
+    Event::listen(function (\SocialiteProviders\Manager\SocialiteWasCalled $event) {
+        $event->extendSocialite('anikeen-id', \Anikeen\Id\Socialite\Provider::class);
+    });
+}
 ```
 
 ### Registering Middleware
@@ -86,7 +88,7 @@ then, you can use the `Billable` trait methods in your user model.
 
 ### Change the default access token / refresh token field name
 
-If you access / refresh token fields differs from the default `anikeen_id_access_token` / `anikeen_id_refresh_token`, you can specify the field name in the 'AppServiceProvider' boot method:
+If you access / refresh token fields differs from the default `anikeen_id_access_token` / `anikeen_id_refresh_token`, you can specify the field name in the `AppServiceProvider` boot method:
 
 ```php
 use Anikeen\Id\AnikeenId;
