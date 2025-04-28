@@ -3,8 +3,8 @@
 namespace Anikeen\Id\Auth;
 
 use Anikeen\Id\AnikeenId;
+use Anikeen\Id\HasAnikeenTokens;
 use Anikeen\Id\Helpers\JwtParser;
-use Anikeen\Id\Traits\HasAnikeenTokens;
 use Exception;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;

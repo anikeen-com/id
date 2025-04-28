@@ -3,83 +3,109 @@
 require __DIR__ . '/../vendor/autoload.php';
 
 use Anikeen\Id\AnikeenId;
+use Anikeen\Id\Billable;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Str;
 
-$markdown = collect(class_uses(AnikeenId::class))
-    ->map(function ($trait) {
+// Liste der Klassen, die ausgewertet werden sollen
+$classes = [
+    AnikeenId::class,
+    Billable::class,
+];
 
-        $title = str_replace('Trait', '', Arr::last(explode('\\', $trait)));
+$allMarkdown = collect($classes)
+    ->map(function (string $class) {
+        $className = Arr::last(explode('\\', $class));
+        $markdown  = "## {$className}\n\n";
 
-        $methods = [];
-
-        $reflection = new ReflectionClass($trait);
-
-        collect($reflection->getMethods())
-            ->reject(function (ReflectionMethod $method) {
-                return $method->isAbstract();
+        // alle Traits der Klasse, außer denen aus ApiOperations
+        $traits = collect(class_uses($class) ?: [])
+            ->reject(function (string $trait) {
+                return Str::contains($trait, 'ApiOperations\\');
             })
-            ->reject(function (ReflectionMethod $method) {
-                return $method->isPrivate() || $method->isProtected();
+            ->all();
+
+        if (empty($traits)) {
+            $markdown .= '_Keine Traits gefunden._';
+            return $markdown;
+        }
+
+        // für jeden Trait die Methoden extrahieren
+        $markdown .= collect($traits)
+            ->map(function (string $trait) {
+                $title      = str_replace('Trait', '', Arr::last(explode('\\', $trait)));
+                $reflection = new ReflectionClass($trait);
+
+                $methods = collect($reflection->getMethods())
+                    ->reject->isAbstract()
+                    ->reject->isPrivate()
+                    ->reject->isProtected()
+                    ->reject->isConstructor()
+                    ->map(function (ReflectionMethod $method) {
+                        // Methodendeklaration starten
+                        $decl = 'public function ' . $method->getName() . '(';
+
+                        // Parameter-Typen und Default-Werte
+                        $decl .= collect($method->getParameters())
+                            ->map(function (ReflectionParameter $p) {
+                                // Typ-Hint
+                                $typeHint = '';
+                                if ($p->hasType()) {
+                                    $type = $p->getType();
+                                    $nullable = $type->allowsNull() ? '?' : '';
+                                    $name     = Arr::last(explode('\\', $type->getName()));
+                                    $typeHint = $nullable . $name . ' ';
+                                }
+
+                                // Parameter-Name
+                                $param = $typeHint . '$' . $p->getName();
+
+                                // Default-Wert
+                                if ($p->isDefaultValueAvailable()) {
+                                    $default = $p->getDefaultValue();
+                                    if (is_array($default) && empty($default)) {
+                                        // leeres Array → Short-Syntax
+                                        $param .= ' = []';
+                                    } elseif ($default === null) {
+                                        // NULL → null (kleingeschrieben)
+                                        $param .= ' = null';
+                                    } else {
+                                        // sonst var_export, Newlines entfernen
+                                        $def = var_export($default, true);
+                                        $param .= ' = ' . str_replace(PHP_EOL, '', $def);
+                                    }
+                                }
+
+                                return $param;
+                            })
+                            ->implode(', ');
+
+                        $decl .= ')';
+
+                        // Rückgabetyp, falls vorhanden
+                        if ($method->hasReturnType()) {
+                            $retType  = $method->getReturnType();
+                            $nullable = $retType->allowsNull() ? '?' : '';
+                            $typeName = Arr::last(explode('\\', $retType->getName()));
+                            $decl    .= ': ' . $nullable . $typeName;
+                        }
+
+                        return $decl;
+                    })
+                    ->all();
+
+                // Markdown-Block für diesen Trait
+                $md  = "### {$title}\n\n```php\n";
+                $md .= implode("\n", $methods) . "\n```\n";
+                return $md;
             })
-            ->reject(function (ReflectionMethod $method) {
-                return $method->isConstructor();
-            })
-            ->each(function (ReflectionMethod $method) use (&$methods, $title, $trait) {
-
-                $declaration = collect($method->getModifiers())->map(function (int $modifier) {
-                    return $modifier == ReflectionMethod::IS_PUBLIC ? 'public ' : '';
-                })->join(' ');
-
-                $declaration .= 'function ';
-                $declaration .= $method->getName();
-                $declaration .= '(';
-
-                $declaration .= collect($method->getParameters())->map(function (ReflectionParameter $parameter) {
-
-                    $parameterString = Arr::last(explode('\\', $parameter->getType()->getName()));
-                    $parameterString .= ' ';
-                    $parameterString .= '$';
-                    $parameterString .= $parameter->getName();
-
-                    if ($parameter->isDefaultValueAvailable()) {
-                        $parameterString .= ' = ';
-                        $parameterString .= str_replace(PHP_EOL, '', var_export($parameter->getDefaultValue(), true));
-                    }
-
-                    return $parameterString;
-
-                })->join(', ');
-
-                $declaration .= ')';
-
-                $methods[] = $declaration;
-            });
-
-        return [$title, $methods];
-    })
-    ->map(function ($args) {
-
-        list($title, $methods) = $args;
-
-        $markdown = '### ' . $title;
-        $markdown .= PHP_EOL . PHP_EOL;
-        $markdown .= '```php';
-        $markdown .= PHP_EOL;
-
-        $markdown .= collect($methods)->each(function ($method) {
-            return $method;
-        })->implode(PHP_EOL);
-
-        $markdown .= PHP_EOL;
-        $markdown .= '```';
+            ->implode("\n");
 
         return $markdown;
-    })->join(PHP_EOL . PHP_EOL);
+    })
+    ->implode("\n\n");
 
-$markdown = str_replace("array (\n)", '[]', $markdown);
-
-$content = file_get_contents(__DIR__ . '/../README.stub');
-
-$content = str_replace('<!-- GENERATED-DOCS -->', $markdown, $content);
-
+// README zusammenbauen und schreiben
+$stub    = file_get_contents(__DIR__ . '/../README.stub');
+$content = str_replace('<!-- GENERATED-DOCS -->', $allMarkdown, $stub);
 file_put_contents(__DIR__ . '/../README.md', $content);

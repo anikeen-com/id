@@ -9,67 +9,112 @@ use stdClass;
 
 class Result
 {
-
     /**
-     * Query successful.
+     * Was the API call successful?
      */
     public bool $success = false;
 
     /**
-     * Query result data.
+     * Response data: either an array of items (paginated) or a single object (non-paginated)
      */
-    public array $data = [];
+    public mixed $data = [];
 
     /**
-     * Total amount of result data.
+     * Total number of items: uses meta.total, root total, or falls back to count/data existence
      */
     public int $total = 0;
 
     /**
-     * Status Code.
+     * HTTP status code
      */
     public int $status = 0;
 
     /**
-     * AnikeenId response pagination cursor.
+     * Pagination links (first, last, prev, next) as stdClass or null
      */
-    public ?stdClass $pagination;
+    public ?stdClass $links = null;
 
     /**
-     * Original AnikeenId instance.
-     *
-     * @var AnikeenId
+     * Pagination meta (current_page, last_page etc.) as stdClass or null
+     */
+    public ?stdClass $meta = null;
+
+    /**
+     * Paginator helper to retrieve next/prev pages
+     */
+    public ?Paginator $paginator = null;
+
+    /**
+     * Reference to the original AnikeenId client
      */
     public AnikeenId $anikeenId;
 
-    public function __construct(public ?ResponseInterface $response, public ?Exception $exception = null, public ?Paginator $paginator = null)
-    {
+    /**
+     * Constructor
+     *
+     * @param ResponseInterface|null $response
+     * @param Exception|null         $exception
+     * @param AnikeenId              $anikeenId
+     */
+    public function __construct(
+        public ?ResponseInterface $response,
+        public ?Exception $exception,
+        AnikeenId $anikeenId
+    ) {
+        $this->anikeenId = $anikeenId;
         $this->success = $exception === null;
         $this->status = $response ? $response->getStatusCode() : 500;
-        $jsonResponse = $response ? @json_decode($response->getBody()->getContents(), false) : null;
-        if ($jsonResponse !== null) {
-            $this->setProperty($jsonResponse, 'data');
-            $this->setProperty($jsonResponse, 'total');
-            $this->setProperty($jsonResponse, 'pagination');
-            $this->paginator = Paginator::from($this);
+
+        $raw = $response ? (string) $response->getBody() : null;
+        $json = $raw ? @json_decode($raw, false) : null;
+
+        if ($json !== null) {
+            // Pagination info
+            $this->links = $json->links ?? null;
+            $this->meta  = $json->meta  ?? null;
+
+            // Determine data shape
+            if (isset($json->data)) {
+                if ($this->links !== null || $this->meta !== null) {
+                    // Paginated: always array
+                    $this->data = is_array($json->data) ? $json->data : [$json->data];
+                } else {
+                    // Non-paginated: single object
+                    $this->data = $json->data;
+                }
+            } else {
+                // No 'data' key: treat entire payload
+                if ($this->links !== null || $this->meta !== null) {
+                    // Paginated but missing data key: fallback to empty array
+                    $this->data = [];
+                } else {
+                    $this->data = $json;
+                }
+            }
+
+            // Total items
+            if (isset($json->meta->total)) {
+                $this->total = (int) $json->meta->total;
+            } elseif (isset($json->total)) {
+                $this->total = (int) $json->total;
+            } else {
+                // count array or single object
+                if (is_array($this->data)) {
+                    $this->total = count($this->data);
+                } elseif ($this->data !== null) {
+                    $this->total = 1;
+                }
+            }
+
+            // Initialize paginator only if pagination present
+            if ($this->links !== null || $this->meta !== null) {
+                $this->paginator = Paginator::from($this);
+            }
         }
     }
 
     /**
-     * Sets a class attribute by given JSON Response Body.
-     */
-    private function setProperty(stdClass $jsonResponse, string $responseProperty, string $attribute = null): void
-    {
-        $classAttribute = $attribute ?? $responseProperty;
-        if (property_exists($jsonResponse, $responseProperty)) {
-            $this->{$classAttribute} = $jsonResponse->{$responseProperty};
-        } elseif ($responseProperty === 'data') {
-            $this->{$classAttribute} = $jsonResponse;
-        }
-    }
-
-    /**
-     * Returns whether the query was successfully.
+     * Was the request successful?
      */
     public function success(): bool
     {
@@ -77,47 +122,46 @@ class Result
     }
 
     /**
-     * Returns the last HTTP or API error.
+     * Get last error message
      */
     public function error(): string
     {
-        // TODO Switch Exception response parsing to this->data
-        if ($this->exception === null || !$this->exception->hasResponse()) {
+        if ($this->exception === null || !method_exists($this->exception, 'getResponse')) {
             return 'Anikeen ID API Unavailable';
         }
-        $exception = (string)$this->exception->getResponse()->getBody();
-        $exception = @json_decode($exception);
-        if (property_exists($exception, 'message') && !empty($exception->message)) {
-            return $exception->message;
+        $resp = $this->exception->getResponse();
+        $body = $resp ? (string) $resp->getBody() : null;
+        $err  = $body ? @json_decode($body) : null;
+        if (isset($err->message) && $err->message !== '') {
+            return $err->message;
         }
-
         return $this->exception->getMessage();
     }
 
     /**
-     * Shifts the current result (Use for single user/video etc. query).
+     * For paginated data: shift first element; for single object: return it
      */
     public function shift(): mixed
     {
-        if (!empty($this->data)) {
-            $data = $this->data;
-
-            return array_shift($data);
+        if (is_array($this->data)) {
+            return array_shift($this->data);
         }
-
-        return null;
+        return $this->data;
     }
 
     /**
-     * Return the current count of items in dataset.
+     * Count of items in data
      */
     public function count(): int
     {
-        return count($this->data);
+        if (is_array($this->data)) {
+            return count($this->data);
+        }
+        return $this->data !== null ? 1 : 0;
     }
 
     /**
-     * Set the Paginator to fetch the next set of results.
+     * Fetch next page paginator
      */
     public function next(): ?Paginator
     {
@@ -125,7 +169,7 @@ class Result
     }
 
     /**
-     * Set the Paginator to fetch the last set of results.
+     * Fetch previous page paginator
      */
     public function back(): ?Paginator
     {
@@ -133,70 +177,61 @@ class Result
     }
 
     /**
-     * Get rate limit information.
+     * Rate limit info from headers
      */
     public function rateLimit(string $key = null): array|int|string|null
     {
         if (!$this->response) {
             return null;
         }
-        $rateLimit = [
-            'limit' => (int)$this->response->getHeaderLine('X-RateLimit-Limit'),
-            'remaining' => (int)$this->response->getHeaderLine('X-RateLimit-Remaining'),
-            'reset' => (int)$this->response->getHeaderLine('Retry-After'),
+        $info = [
+            'limit'     => (int) $this->response->getHeaderLine('X-RateLimit-Limit'),
+            'remaining' => (int) $this->response->getHeaderLine('X-RateLimit-Remaining'),
+            'reset'     => (int) $this->response->getHeaderLine('Retry-After'),
         ];
-        if ($key === null) {
-            return $rateLimit;
-        }
-
-        return $rateLimit[$key];
+        return $key ? ($info[$key] ?? null) : $info;
     }
 
     /**
-     * Insert users in data response.
+     * Insert related users into each data item (for arrays)
      */
     public function insertUsers(string $identifierAttribute = 'user_id', string $insertTo = 'user'): self
     {
-        $data = $this->data;
-        $userIds = collect($data)->map(function ($item) use ($identifierAttribute) {
-            return $item->{$identifierAttribute};
-        })->toArray();
-        if (count($userIds) === 0) {
+        if (!is_array($this->data)) {
             return $this;
         }
-        $users = collect($this->anikeenId->getUsersByIds($userIds)->data);
-        $dataWithUsers = collect($data)->map(function ($item) use ($users, $identifierAttribute, $insertTo) {
-            $item->$insertTo = $users->where('id', $item->{$identifierAttribute})->first();
-
-            return $item;
-        });
-        $this->data = $dataWithUsers->toArray();
-
+        $ids = array_map(fn($item) => $item->{$identifierAttribute} ?? null, $this->data);
+        $ids = array_filter($ids);
+        if (empty($ids)) {
+            return $this;
+        }
+        $users = $this->anikeenId->getUsersByIds($ids)->data;
+        foreach ($this->data as &$item) {
+            $item->{$insertTo} = collect($users)->firstWhere('id', $item->{$identifierAttribute});
+        }
         return $this;
     }
 
     /**
-     * Set the Paginator to fetch the first set of results.
+     * Fetch first page paginator
      */
     public function first(): ?Paginator
     {
         return $this->paginator?->first();
     }
 
+    /**
+     * Original response
+     */
     public function response(): ?ResponseInterface
     {
         return $this->response;
     }
 
-    public function dump(): void
-    {
-        dump($this->data());
-    }
-
     /**
-     * Get the response data, also available as public attribute.
+     * Access raw data
      */
-    public function data(): array
+    public function data(): mixed
     {
         return $this->data;
     }

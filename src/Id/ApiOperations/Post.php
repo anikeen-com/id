@@ -2,10 +2,18 @@
 
 namespace Anikeen\Id\ApiOperations;
 
+use Anikeen\Id\Exceptions\RequestRequiresClientIdException;
 use Anikeen\Id\Helpers\Paginator;
 use Anikeen\Id\Result;
+use GuzzleHttp\Exception\GuzzleException;
 
 trait Post
 {
-    abstract public function post(string $path = '', array $parameters = [], Paginator $paginator = null): Result;
+    /**
+     * Make a POST request to the API.
+     *
+     * @throws RequestRequiresClientIdException
+     * @throws GuzzleException
+     */
+    abstract public function post(string $path, array $payload = [], array $parameters = [], Paginator $paginator = null): Result;
 }

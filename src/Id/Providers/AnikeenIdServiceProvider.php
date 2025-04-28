@@ -21,9 +21,7 @@ class AnikeenIdServiceProvider extends ServiceProvider
      */
     public function boot()
     {
-        $this->publishes([
-            dirname(__DIR__, 3) . '/config/anikeen-id.php' => config_path('anikeen-id.php'),
-        ], 'config');
+        //
     }
 
     /**
@@ -31,7 +29,6 @@ class AnikeenIdServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        $this->mergeConfigFrom(dirname(__DIR__, 3) . '/config/anikeen-id.php', 'anikeen-id');
         $this->app->singleton(Contracts\AppTokenRepository::class, Repository\AppTokenRepository::class);
         $this->app->singleton(AnikeenId::class, function () {
             return new AnikeenId;

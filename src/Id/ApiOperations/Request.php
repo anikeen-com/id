@@ -7,13 +7,13 @@ use Anikeen\Id\Helpers\Paginator;
 use Anikeen\Id\Result;
 use GuzzleHttp\Exception\GuzzleException;
 
-trait Get
+trait Request
 {
     /**
-     * Get a resource from the API.
+     * Make a request to the API.
      *
      * @throws RequestRequiresClientIdException
      * @throws GuzzleException
      */
-    abstract public function get(string $path, array $parameters = [], Paginator $paginator = null): Result;
+    abstract public function request(string $method, string $path, null|array $payload = null, array $parameters = [], Paginator $paginator = null): Result;
 }

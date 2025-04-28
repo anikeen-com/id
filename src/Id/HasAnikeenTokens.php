@@ -1,6 +1,6 @@
 <?php
 
-namespace Anikeen\Id\Traits;
+namespace Anikeen\Id;
 
 use stdClass;
 
@@ -9,7 +9,7 @@ trait HasAnikeenTokens
     /**
      * The current access token for the authentication user.
      */
-    protected ?stdClass $accessToken;
+    protected ?stdClass $accessToken = null;
 
     /**
      * Get the current access token being used by the user.

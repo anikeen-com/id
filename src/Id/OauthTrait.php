@@ -1,9 +1,8 @@
 <?php
 
 
-namespace Anikeen\Id\Traits;
+namespace Anikeen\Id;
 
-use Anikeen\Id\Result;
 use GuzzleHttp\Exception\RequestException;
 
 

@@ -2,6 +2,9 @@
 
 namespace Anikeen\Id;
 
+use Anikeen\Id\Concerns\ManagesPricing;
+use Anikeen\Id\Concerns\ManagesSshKeys;
+use Anikeen\Id\Concerns\ManagesUsers;
 use Anikeen\Id\Exceptions\RequestRequiresAuthenticationException;
 use Anikeen\Id\Exceptions\RequestRequiresClientIdException;
 use Anikeen\Id\Exceptions\RequestRequiresRedirectUriException;
@@ -15,14 +18,16 @@ use Illuminate\Contracts\Auth\Authenticatable;
 
 class AnikeenId
 {
-    use Traits\OauthTrait;
-    use Traits\SshKeysTrait;
-    use Traits\UsersTrait;
+    use OauthTrait;
+    use ManagesPricing;
+    use ManagesSshKeys;
+    use ManagesUsers;
 
     use ApiOperations\Delete;
     use ApiOperations\Get;
     use ApiOperations\Post;
     use ApiOperations\Put;
+    use ApiOperations\Request;
 
     /**
      * The name for API token cookies.
@@ -41,7 +46,20 @@ class AnikeenId
      */
     public static bool $unserializesCookies = false;
 
+    /**
+     * The base URL for Anikeen ID API.
+     */
     private static string $baseUrl = 'https://id.anikeen.com/api/';
+
+    /**
+     * The key for the access token.
+     */
+    private static string $accessTokenKey = 'anikeen_id_token';
+
+    /**
+     * The key for the access token.
+     */
+    private static string $refreshTokenKey = 'anikeen_id_refresh_token';
 
     /**
      * Guzzle is used to make http requests.
@@ -55,13 +73,11 @@ class AnikeenId
 
     /**
      * Anikeen ID OAuth token.
-     *
      */
     protected ?string $token = null;
 
     /**
      * Anikeen ID client id.
-     *
      */
     protected ?string $clientId = null;
 
@@ -80,17 +96,17 @@ class AnikeenId
      */
     public function __construct()
     {
-        if ($clientId = config('anikeen_id.client_id')) {
+        if ($clientId = config('services.anikeen.client_id')) {
             $this->setClientId($clientId);
         }
-        if ($clientSecret = config('anikeen_id.client_secret')) {
+        if ($clientSecret = config('services.anikeen.client_secret')) {
             $this->setClientSecret($clientSecret);
         }
-        if ($redirectUri = config('anikeen_id.redirect_url')) {
+        if ($redirectUri = config('services.anikeen.redirect')) {
             $this->setRedirectUri($redirectUri);
         }
-        if ($redirectUri = config('anikeen_id.base_url')) {
-            self::setBaseUrl($redirectUri);
+        if ($baseUrl = config('services.anikeen.base_url')) {
+            self::setBaseUrl($baseUrl);
         }
         $this->client = new Client([
             'base_uri' => self::$baseUrl,
@@ -107,13 +123,33 @@ class AnikeenId
         self::$baseUrl = $baseUrl;
     }
 
+    public static function useAccessTokenKey(string $accessTokenKey): void
+    {
+        self::$accessTokenKey = $accessTokenKey;
+    }
+
+    public static function getAccessTokenKey(): string
+    {
+        return self::$accessTokenKey;
+    }
+
+    public static function useRefreshTokenKey(string $refreshTokenKey): void
+    {
+        self::$refreshTokenKey = $refreshTokenKey;
+    }
+
+    public static function getRefreshTokenKey(): string
+    {
+        return self::$refreshTokenKey;
+    }
+
     /**
      * Get or set the name for API token cookies.
      *
      * @param string|null $cookie
      * @return string|static
      */
-    public static function cookie(string $cookie = null)
+    public static function cookie(string $cookie = null): string|static
     {
         if (is_null($cookie)) {
             return static::$cookie;
@@ -127,7 +163,7 @@ class AnikeenId
     /**
      * Set the current user for the application with the given scopes.
      */
-    public static function actingAs(Authenticatable|Traits\HasAnikeenTokens $user, array $scopes = [], string $guard = 'api'): Authenticatable
+    public static function actingAs(Authenticatable|HasAnikeenTokens $user, array $scopes = [], string $guard = 'api'): Authenticatable
     {
         $user->withAnikeenAccessToken((object)[
             'scopes' => $scopes
@@ -251,12 +287,25 @@ class AnikeenId
     }
 
     /**
-     * @throws GuzzleException
+     * Get client id.
+     *
      * @throws RequestRequiresClientIdException
      */
-    public function get(string $path = '', array $parameters = [], Paginator $paginator = null): Result
+    public function getClientId(): string
     {
-        return $this->query('GET', $path, $parameters, $paginator);
+        if (!$this->clientId) {
+            throw new RequestRequiresClientIdException;
+        }
+
+        return $this->clientId;
+    }
+
+    /**
+     * Set client id.
+     */
+    public function setClientId(string $clientId): void
+    {
+        $this->clientId = $clientId;
     }
 
     /**
@@ -265,23 +314,23 @@ class AnikeenId
      * @throws GuzzleException
      * @throws RequestRequiresClientIdException
      */
-    public function query(string $method = 'GET', string $path = '', array $parameters = [], Paginator $paginator = null, mixed $jsonBody = null): Result
+    public function request(string $method, string $path, null|array $payload = null, array $parameters = [], Paginator $paginator = null): Result
     {
-        /** @noinspection DuplicatedCode */
         if ($paginator !== null) {
             $parameters[$paginator->action] = $paginator->cursor();
         }
+
         try {
             $response = $this->client->request($method, $path, [
-                'headers' => $this->buildHeaders((bool)$jsonBody),
+                'headers' => $this->buildHeaders((bool)$payload),
                 'query' => Query::build($parameters),
-                'json' => $jsonBody ?: null,
+                'json' => $payload ?: null,
             ]);
-            $result = new Result($response, null, $paginator);
+
+            $result = new Result($response, null, $this);
         } catch (RequestException $exception) {
-            $result = new Result($exception->getResponse(), $exception, $paginator);
+            $result = new Result($exception->getResponse(), $exception, $this);
         }
-        $result->anikeenId = $this;
 
         return $result;
     }
@@ -308,64 +357,38 @@ class AnikeenId
     }
 
     /**
-     * Get client id.
-     *
+     * @throws GuzzleException
      * @throws RequestRequiresClientIdException
      */
-    public function getClientId(): string
+    public function get(string $path, array $parameters = [], Paginator $paginator = null): Result
     {
-        if (!$this->clientId) {
-            throw new RequestRequiresClientIdException;
-        }
-
-        return $this->clientId;
-    }
-
-    /**
-     * Set client id.
-     */
-    public function setClientId(string $clientId): void
-    {
-        $this->clientId = $clientId;
+        return $this->request('GET', $path, null, $parameters, $paginator);
     }
 
     /**
      * @throws GuzzleException
      * @throws RequestRequiresClientIdException
      */
-    public function post(string $path = '', array $parameters = [], Paginator $paginator = null): Result
+    public function post(string $path, array $payload = [], array $parameters = [], Paginator $paginator = null): Result
     {
-        return $this->query('POST', $path, $parameters, $paginator);
+        return $this->request('POST', $path, $payload, $parameters, $paginator);
     }
 
     /**
      * @throws GuzzleException
      * @throws RequestRequiresClientIdException
      */
-    public function delete(string $path = '', array $parameters = [], Paginator $paginator = null): Result
+    public function put(string $path, array $payload = [], array $parameters = [], Paginator $paginator = null): Result
     {
-        return $this->query('DELETE', $path, $parameters, $paginator);
+        return $this->request('PUT', $path, $payload, $parameters, $paginator);
     }
 
     /**
      * @throws GuzzleException
      * @throws RequestRequiresClientIdException
      */
-    public function put(string $path = '', array $parameters = [], Paginator $paginator = null): Result
+    public function delete(string $path, array $payload = [], array $parameters = [], Paginator $paginator = null): Result
     {
-        return $this->query('PUT', $path, $parameters, $paginator);
-    }
-
-    /**
-     * @throws GuzzleException
-     * @throws RequestRequiresClientIdException
-     */
-    public function json(string $method, string $path = '', array $body = null): Result
-    {
-        if ($body) {
-            $body = json_encode(['data' => $body]);
-        }
-
-        return $this->query($method, $path, [], null, $body);
+        return $this->request('DELETE', $path, $payload, $parameters, $paginator);
     }
 }

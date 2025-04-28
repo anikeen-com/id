@@ -2,10 +2,18 @@
 
 namespace Anikeen\Id\ApiOperations;
 
+use Anikeen\Id\Exceptions\RequestRequiresClientIdException;
 use Anikeen\Id\Helpers\Paginator;
 use Anikeen\Id\Result;
+use GuzzleHttp\Exception\GuzzleException;
 
 trait Delete
 {
-    abstract public function delete(string $path = '', array $parameters = [], Paginator $paginator = null): Result;
+    /**
+     * Delete a resource from the API.
+     *
+     * @throws RequestRequiresClientIdException
+     * @throws GuzzleException
+     */
+    abstract public function delete(string $path, array $payload = [], array $parameters = [], Paginator $paginator = null): Result;
 }
