@@ -62,4 +62,9 @@ class UserProvider implements Base
     {
         return $this->providerName;
     }
+
+    public function rehashPasswordIfRequired(Authenticatable $user, #[\SensitiveParameter] array $credentials, bool $force = false)
+    {
+        // TODO: Implement rehashPasswordIfRequired() method.
+    }
 }

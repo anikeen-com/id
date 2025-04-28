@@ -13,28 +13,19 @@ use Illuminate\Support\Arr;
 
 class AnikeenIdSsoUserProvider implements UserProvider
 {
-    private AnikeenId $anikeenId;
     private ?string $accessTokenField = null;
-    private array $fields;
-    private string $model;
-    private Request $request;
 
     public function __construct(
-        AnikeenId $anikeenId,
-        Request   $request,
-        string    $model,
-        array     $fields,
-        ?string   $accessTokenField = null
+        private AnikeenId $anikeenId,
+        private Request   $request,
+        private string    $model,
+        private array     $fields
     )
     {
-        $this->request = $request;
-        $this->model = $model;
-        $this->fields = $fields;
-        $this->accessTokenField = $accessTokenField;
-        $this->anikeenId = $anikeenId;
+        $this->accessTokenField = AnikeenId::getAccessTokenField();
     }
 
-    public function retrieveById(mixed $identifier): Builder|Model|null
+    public function retrieveById(mixed $identifier): ?Authenticatable
     {
         $model = $this->createModel();
         $token = $this->request->bearerToken();
@@ -113,5 +104,10 @@ class AnikeenIdSsoUserProvider implements UserProvider
     public function validateCredentials(Authenticatable $user, array $credentials): bool
     {
         return false;
+    }
+
+    public function rehashPasswordIfRequired(Authenticatable $user, #[\SensitiveParameter] array $credentials, bool $force = false)
+    {
+        // TODO: Implement rehashPasswordIfRequired() method.
     }
 }

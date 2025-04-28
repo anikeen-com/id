@@ -54,12 +54,12 @@ class AnikeenId
     /**
      * The key for the access token.
      */
-    private static string $accessTokenKey = 'anikeen_id_token';
+    private static string $accessTokenField = 'anikeen_id_access_token';
 
     /**
      * The key for the access token.
      */
-    private static string $refreshTokenKey = 'anikeen_id_refresh_token';
+    private static string $refreshTokenField = 'anikeen_id_refresh_token';
 
     /**
      * Guzzle is used to make http requests.
@@ -123,24 +123,24 @@ class AnikeenId
         self::$baseUrl = $baseUrl;
     }
 
-    public static function useAccessTokenKey(string $accessTokenKey): void
+    public static function useAccessTokenField(string $accessTokenField): void
     {
-        self::$accessTokenKey = $accessTokenKey;
+        self::$accessTokenField = $accessTokenField;
     }
 
-    public static function getAccessTokenKey(): string
+    public static function getAccessTokenField(): string
     {
-        return self::$accessTokenKey;
+        return self::$accessTokenField;
     }
 
-    public static function useRefreshTokenKey(string $refreshTokenKey): void
+    public static function useRefreshTokenField(string $refreshTokenField): void
     {
-        self::$refreshTokenKey = $refreshTokenKey;
+        self::$refreshTokenField = $refreshTokenField;
     }
 
-    public static function getRefreshTokenKey(): string
+    public static function getRefreshTokenField(): string
     {
-        return self::$refreshTokenKey;
+        return self::$refreshTokenField;
     }
 
     /**

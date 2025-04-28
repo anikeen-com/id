@@ -11,11 +11,10 @@ PHP Anikeen ID API Client for Laravel 11+
 1. [Installation](#installation)
 2. [Event Listener](#event-listener)
 3. [Configuration](#configuration)
-4. [Implementing Auth](#implementing-auth)
-5. [General](#general)
-6. [Examples](#examples)
-7. [Documentation](#documentation)
-8. [Development](#Development)
+4. [General](#general)
+5. [Examples](#examples)
+6. [Documentation](#documentation)
+7. [Development](#Development)
 
 ## Installation
 
@@ -56,13 +55,50 @@ You will need to add an entry to the services configuration file so that after c
 ],
 ```
 
+### Registering Middleware
+
+Append it to the global middleware stack in your application's `bootstrap/app.php` file:
+
 ```php
-$middleware->web(append: [
-    \Anikeen\Id\Http\Middleware\CreateFreshApiToken::class,
-]);
+->withMiddleware(function (Middleware $middleware) {
+    $middleware->web(append: [
+        \Anikeen\Id\Http\Middleware\CreateFreshApiToken::class,
+    ]);
+})
 ```
 
-## Implementing Auth
+### Implementing Billable
+
+To implement the `Billable` trait, you need to add the `Billable` trait to your user model.
+
+```php
+use Anikeen\Id\Billable;
+
+class User extends Authenticatable
+{
+    use Billable;
+
+    // Your model code...
+}
+```
+
+then, you can use the `Billable` trait methods in your user model.
+
+### Change the default access token / refresh token field name
+
+If you access / refresh token fields differs from the default `anikeen_id_access_token` / `anikeen_id_refresh_token`, you can specify the field name in the 'AppServiceProvider' boot method:
+
+```php
+use Anikeen\Id\AnikeenId;
+
+public function boot(): void
+{
+    AnikeenId::useAccessTokenField('anikeen_id_access_token');
+    AnikeenId::useRefreshTokenField('anikeen_id_refresh_token');
+}
+```
+
+### Implementing Auth
 
 This method should typically be called in the `boot` method of your `AuthServiceProvider` class:
 
@@ -71,12 +107,7 @@ use Anikeen\Id\AnikeenId;
 use Anikeen\Id\Providers\AnikeenIdSsoUserProvider;
 use Illuminate\Http\Request;
 
-/**
- * Register any authentication / authorization services.
- *
- * @return void
- */
-public function boot()
+public function boot(): void
 {
     Auth::provider('sso-users', function ($app, array $config) {
         return new AnikeenIdSsoUserProvider(
@@ -84,7 +115,6 @@ public function boot()
             $app->make(Request::class),
             $config['model'],
             $config['fields'] ?? [],
-            $config['access_token_field'] ?? null
         );
     });
 }
@@ -119,7 +149,6 @@ reference the provider in the `providers` configuration of your `auth.php` confi
         'driver' => 'sso-users',
         'model' => App\Models\User::class,
         'fields' => ['first_name', 'last_name', 'email'],
-        'access_token_field' => 'sso_access_token',
     ],
 ],
 ```

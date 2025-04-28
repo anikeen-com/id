@@ -51,7 +51,7 @@ trait Billable
     protected function request(string $method, string $path, null|array $payload = null, array $parameters = [], Paginator $paginator = null): Result
     {
         $anikeenId = new AnikeenId();
-        $anikeenId->withToken($this->{AnikeenId::getAccessTokenKey()});
+        $anikeenId->withToken($this->{AnikeenId::getAccessTokenField()});
 
         return $anikeenId->request($method, $path, $payload, $parameters, $paginator);
     }
