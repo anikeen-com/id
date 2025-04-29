@@ -15,7 +15,7 @@ class Provider extends AbstractProvider implements ProviderInterface
     /**
      * Unique Provider Identifier.
      */
-    const IDENTIFIER = 'ANIKEEN_ID';
+    const IDENTIFIER = 'ANIKEEN';
 
     /**
      * {@inheritdoc}
