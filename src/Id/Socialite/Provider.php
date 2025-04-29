@@ -32,7 +32,7 @@ class Provider extends AbstractProvider implements ProviderInterface
      */
     protected function getBaseUrl(): string
     {
-        $mode = $this->config['mode'] ?? 'production';
+        $mode = config('services.anikeen.mode') ?? 'production';
 
         return $mode === 'staging'
             ? 'https://staging.id.anikeen.com'
