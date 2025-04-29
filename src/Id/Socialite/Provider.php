@@ -4,6 +4,7 @@ namespace Anikeen\Id\Socialite;
 
 use Anikeen\Id\Enums\Scope;
 use GuzzleHttp\Exception\GuzzleException;
+use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Laravel\Socialite\Two\ProviderInterface;
 use SocialiteProviders\Manager\OAuth2\AbstractProvider;
@@ -27,12 +28,24 @@ class Provider extends AbstractProvider implements ProviderInterface
     protected $scopeSeparator = ' ';
 
     /**
+     * Get the base URL for the API.
+     */
+    protected function getBaseUrl(): string
+    {
+        $mode = $this->config['mode'] ?? 'production';
+
+        return $mode === 'staging'
+            ? 'https://staging.id.anikeen.com'
+            : 'https://id.anikeen.com';
+    }
+
+    /**
      * {@inheritdoc}
      */
     protected function getAuthUrl($state): string
     {
         return $this->buildAuthUrlFromBase(
-            'https://id.anikeen.com/oauth/authorize', $state
+            $this->getBaseUrl() . '/oauth/authorize', $state
         );
     }
 
@@ -41,7 +54,7 @@ class Provider extends AbstractProvider implements ProviderInterface
      */
     protected function getTokenUrl(): string
     {
-        return 'https://id.anikeen.com/oauth/token';
+        return $this->getBaseUrl() . '/oauth/token';
     }
 
     /**
@@ -52,7 +65,7 @@ class Provider extends AbstractProvider implements ProviderInterface
     protected function getUserByToken($token)
     {
         $response = $this->getHttpClient()->get(
-            'https://id.anikeen.com/api/v1/user', [
+            $this->getBaseUrl() . '/api/v1/user', [
             'headers' => [
                 'Accept' => 'application/json',
                 'Authorization' => 'Bearer ' . $token,

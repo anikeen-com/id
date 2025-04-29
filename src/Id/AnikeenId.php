@@ -52,6 +52,11 @@ class AnikeenId
     private static string $baseUrl = 'https://id.anikeen.com/api/';
 
     /**
+     * The staging base URL for Anikeen ID API.
+     */
+    private static string $stagingBaseUrl = 'https://staging.id.anikeen.com/api/';
+
+    /**
      * The key for the access token.
      */
     private static string $accessTokenField = 'anikeen_id_access_token';
@@ -104,6 +109,9 @@ class AnikeenId
         }
         if ($redirectUri = config('services.anikeen.redirect')) {
             $this->setRedirectUri($redirectUri);
+        }
+        if (config('services.anikeen.mode') === 'staging') {
+            self::setBaseUrl(self::$stagingBaseUrl);
         }
         if ($baseUrl = config('services.anikeen.base_url')) {
             self::setBaseUrl($baseUrl);

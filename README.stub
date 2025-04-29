@@ -31,12 +31,19 @@ ANIKEEN_ID_SECRET=
 ANIKEEN_ID_CALLBACK_URL=http://localhost/auth/callback
 ```
 
+To switch from `production` to `staging` use following variable:
+
+```
+ANIKEEN_ID_MODE=staging
+```
+
 You will need to add an entry to the services configuration file so that after config files are cached for usage in production environment (Laravel command `artisan config:cache`) all config is still available.
 
 Add to `config/services.php` file:
 
 ```php
 'anikeen' => [
+    'mode' => env('ANIKEEN_ID_MODE'),
     'client_id' => env('ANIKEEN_ID_KEY'),
     'client_secret' => env('ANIKEEN_ID_SECRET'),
     'redirect' => env('ANIKEEN_ID_CALLBACK_URL'),
