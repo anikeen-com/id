@@ -8,6 +8,6 @@ class AnikeenIdExtendSocialite
 {
     public function handle(SocialiteWasCalled $socialiteWasCalled): void
     {
-        $socialiteWasCalled->extendSocialite('anikeen-id', Provider::class);
+        $socialiteWasCalled->extendSocialite('anikeen', Provider::class);
     }
 }
