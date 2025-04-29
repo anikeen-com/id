@@ -59,7 +59,7 @@ In Laravel 11, the default EventServiceProvider provider was removed. Instead, a
 public function boot(): void
 {
     Event::listen(function (\SocialiteProviders\Manager\SocialiteWasCalled $event) {
-        $event->extendSocialite('anikeen-id', \Anikeen\Id\Socialite\Provider::class);
+        $event->extendSocialite('anikeen', \Anikeen\Id\Socialite\Provider::class);
     });
 }
 ```
@@ -139,7 +139,7 @@ reference the guard in the `guards` configuration of your `auth.php` configurati
     ],
 
     'api' => [
-        'driver' => 'anikeen-id',
+        'driver' => 'anikeen',
         'provider' => 'sso-users',
     ],
 ],

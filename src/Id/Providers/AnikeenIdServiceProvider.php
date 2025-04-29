@@ -43,7 +43,7 @@ class AnikeenIdServiceProvider extends ServiceProvider
     protected function registerGuard(): void
     {
         Auth::resolved(function ($auth) {
-            $auth->extend('anikeen-id', function ($app, $name, array $config) {
+            $auth->extend('anikeen', function ($app, $name, array $config) {
                 return tap($this->makeGuard($config), function ($guard) {
                     $this->app->refresh('request', $guard, 'setRequest');
                 });
