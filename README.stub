@@ -119,7 +119,7 @@ use Illuminate\Support\Facades\Auth;
 
 public function boot(): void
 {
-    Auth::provider('sso-users', function ($app, array $config) {
+    Auth::provider('anikeen', function ($app, array $config) {
         return new AnikeenIdSsoUserProvider(
             $app->make(AnikeenId::class),
             $app->make(Request::class),
