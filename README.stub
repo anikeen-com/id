@@ -113,14 +113,14 @@ This method should typically be called in the `boot` method of your `AppServiceP
 
 ```php
 use Anikeen\Id\AnikeenId;
-use Anikeen\Id\Providers\AnikeenIdSsoUserProvider;
+use Anikeen\Id\Providers\AnikeenIdUserProvider;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 public function boot(): void
 {
     Auth::provider('anikeen', function ($app, array $config) {
-        return new AnikeenIdSsoUserProvider(
+        return new AnikeenIdUserProvider(
             $app->make(AnikeenId::class),
             $app->make(Request::class),
             $config['model'],
