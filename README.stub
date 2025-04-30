@@ -141,7 +141,7 @@ reference the guard in the `guards` configuration of your `auth.php` configurati
 
     'api' => [
         'driver' => 'anikeen',
-        'provider' => 'sso-users',
+        'provider' => 'anikeen',
     ],
 ],
 ```
@@ -155,8 +155,8 @@ reference the provider in the `providers` configuration of your `auth.php` confi
         'model' => App\Models\User::class,
     ],
 
-    'sso-users' => [
-        'driver' => 'sso-users',
+    'anikeen' => [
+        'driver' => 'anikeen',
         'model' => App\Models\User::class,
         'fields' => ['first_name', 'last_name', 'email'],
     ],
