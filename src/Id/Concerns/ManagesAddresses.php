@@ -22,4 +22,16 @@ trait ManagesAddresses
         return (new Addresses($this->request('GET', 'v1/addresses')))
             ->setBillable($this);
     }
+
+    /**
+     * Check if the current user has a default billing address.
+     *
+     * @see \Anikeen\Id\Resources\Addresses::hasDefaultBillingAddress()
+     * @throws RequestRequiresClientIdException
+     * @throws GuzzleException
+     */
+    public function hasDefaultBillingAddress(): bool
+    {
+        return $this->addresses()->hasDefaultBillingAddress();
+    }
 }

@@ -4,6 +4,7 @@ namespace Anikeen\Id\Concerns;
 
 use Anikeen\Id\ApiOperations\Request;
 use Anikeen\Id\Exceptions\RequestRequiresClientIdException;
+use Anikeen\Id\Resources\PaymentMethod;
 use Anikeen\Id\Resources\PaymentMethods;
 use Anikeen\Id\Result;
 use GuzzleHttp\Exception\GuzzleException;
@@ -22,6 +23,42 @@ trait ManagesPaymentMethods
     {
         return (new PaymentMethods($this->request('GET', 'v1/payment-methods')))
             ->setBillable($this);
+    }
+
+    /**
+     * Check if current user has at least one payment method.
+     *
+     * @see \Anikeen\Id\Resources\PaymentMethods::hasPaymentMethod()
+     * @throws RequestRequiresClientIdException
+     * @throws GuzzleException
+     */
+    public function hasPaymentMethod(): ?PaymentMethod
+    {
+        return $this->paymentMethods()->hasPaymentMethod();
+    }
+
+    /**
+     * Get default payment method from the current user.
+     *
+     * @see \Anikeen\Id\Resources\PaymentMethods::defaultPaymentMethod()
+     * @throws RequestRequiresClientIdException
+     * @throws GuzzleException
+     */
+    public function defaultPaymentMethod(): ?PaymentMethod
+    {
+        return $this->paymentMethods()->defaultPaymentMethod();
+    }
+
+    /**
+     * Check if the current user has a default payment method.
+     *
+     * @see \Anikeen\Id\Resources\PaymentMethods::hasDefaultPaymentMethod()
+     * @throws RequestRequiresClientIdException
+     * @throws GuzzleException
+     */
+    public function hasDefaultPaymentMethod(): bool
+    {
+        return $this->paymentMethods()->hasDefaultPaymentMethod();
     }
 
     /**
