@@ -2,9 +2,7 @@
 
 namespace Anikeen\Id\Resources;
 
-use Anikeen\Id\Exceptions\RequestRequiresClientIdException;
 use Anikeen\Id\Result;
-use GuzzleHttp\Exception\GuzzleException;
 use JsonSerializable;
 
 abstract class BaseCollection implements JsonSerializable
@@ -19,7 +17,7 @@ abstract class BaseCollection implements JsonSerializable
      */
     public function toArray(): array
     {
-        return (array) $this->result;
+        return (array)$this->result->data;
     }
 
     /**
@@ -32,20 +30,14 @@ abstract class BaseCollection implements JsonSerializable
 
     /**
      * Returns the collection of resources.
-     *
-     * @throws RequestRequiresClientIdException
-     * @throws GuzzleException
      */
-    public function get(): Result
+    public function paginate(): Result
     {
         return $this->result;
     }
 
     /**
      * Returns the Resource based on the ID.
-     *
-     * @throws RequestRequiresClientIdException
-     * @throws GuzzleException
      */
     abstract public function find(string $id): ?BaseResource;
 }

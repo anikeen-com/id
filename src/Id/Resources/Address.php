@@ -4,6 +4,7 @@ namespace Anikeen\Id\Resources;
 
 use Anikeen\Id\Concerns\HasBillable;
 use Anikeen\Id\Exceptions\RequestRequiresClientIdException;
+use Anikeen\Id\Result;
 use GuzzleHttp\Exception\GuzzleException;
 
 /**

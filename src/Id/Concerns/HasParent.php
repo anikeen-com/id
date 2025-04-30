@@ -6,7 +6,7 @@ trait HasParent
 {
     protected mixed $parent;
 
-    public function setParent($parent): self
+    public function setParent(mixed $parent): self
     {
         $this->parent = $parent;
 
