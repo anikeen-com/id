@@ -109,12 +109,13 @@ public function boot(): void
 
 ### Implementing Auth
 
-This method should typically be called in the `boot` method of your `AuthServiceProvider` class:
+This method should typically be called in the `boot` method of your `AppServiceProvider` class:
 
 ```php
 use Anikeen\Id\AnikeenId;
 use Anikeen\Id\Providers\AnikeenIdSsoUserProvider;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 public function boot(): void
 {
