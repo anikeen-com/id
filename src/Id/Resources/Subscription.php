@@ -8,6 +8,12 @@ use GuzzleHttp\Exception\GuzzleException;
 
 /**
  * @property string $id
+ * @property string $name
+ * @property string $description
+ * @property string $status
+ * @property string $unit
+ * @property float $price
+ * @property string $ends_at
  */
 class Subscription extends BaseResource
 {

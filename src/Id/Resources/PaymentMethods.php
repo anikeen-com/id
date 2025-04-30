@@ -11,6 +11,8 @@ class PaymentMethods extends BaseCollection
 {
     use HasBillable;
 
+    private ?PaymentMethod $cachedDefaultPaymentMethod = null;
+
     /**
      * Check if current user has at least one payment method.
      *
@@ -30,8 +32,24 @@ class PaymentMethods extends BaseCollection
      */
     public function defaultPaymentMethod(): PaymentMethod
     {
-        return (new PaymentMethod($this->billable->request('GET', 'v1/payment-methods/default')))
-            ->setBillable($this->billable);
+        if ($this->cachedDefaultPaymentMethod === null) {
+            $this->cachedDefaultPaymentMethod = (new PaymentMethod(
+                $this->billable->request('GET', 'v1/payment-methods/default')
+            ))->setBillable($this->billable);
+        }
+
+        return $this->cachedDefaultPaymentMethod;
+    }
+
+    /**
+     * Check if the current user has a default payment method.
+     *
+     * @throws RequestRequiresClientIdException
+     * @throws GuzzleException
+     */
+    public function hasDefaultPaymentMethod(): bool
+    {
+        return $this->defaultPaymentMethod()?->id !== null;
     }
 
     /**

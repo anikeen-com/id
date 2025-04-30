@@ -18,9 +18,9 @@ trait ManagesOrders
      * @throws RequestRequiresClientIdException
      * @throws GuzzleException
      */
-    public function orders(): Orders
+    public function orders(array $parameters = []): Orders
     {
-        return (new Orders($this->request('GET', 'v1/orders')))
+        return (new Orders($this->request('GET', 'v1/orders', [], $parameters)))
             ->setBillable($this);
     }
 }

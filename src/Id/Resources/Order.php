@@ -102,13 +102,12 @@ class Order extends BaseResource
     /**
      * Get order items from given order.
      *
-     * @param string $orderId The order ID.
      * @throws RequestRequiresClientIdException
      * @throws GuzzleException
      */
-    public function orderItems(string $orderId): OrderItems
+    public function orderItems(array $parameters = []): OrderItems
     {
-        return (new OrderItems($this->billable->request('GET', sprintf('v1/orders/%s/items', $this->id))))
+        return (new OrderItems($this->billable->request('GET', sprintf('v1/orders/%s/items', $this->id), [], $parameters)))
             ->setBillable($this->billable)
             ->setParent($this);
     }

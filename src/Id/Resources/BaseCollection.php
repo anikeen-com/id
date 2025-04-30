@@ -2,11 +2,14 @@
 
 namespace Anikeen\Id\Resources;
 
+use Anikeen\Id\Concerns\MagicProperties;
 use Anikeen\Id\Result;
 use JsonSerializable;
 
 abstract class BaseCollection implements JsonSerializable
 {
+    use MagicProperties;
+
     public function __construct(protected Result $result)
     {
         //
