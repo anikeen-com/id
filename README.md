@@ -294,9 +294,7 @@ public function createOrderPreview(array $attributes = []): Result
 ### ManagesSshKeys
 
 ```php
-public function sshKeysByUserId(string $sskKeyId): Result
-public function createSshKey(string $publicKey, ?string $name = null): Result
-public function deleteSshKey(int $sshKeyId): Result
+public function sshKeysByUserId(string $sskKeyId): SshKeys
 ```
 
 ### ManagesUsers
@@ -305,6 +303,8 @@ public function deleteSshKey(int $sshKeyId): Result
 public function getAuthedUser(): Result
 public function createUser(array $attributes): Result
 public function isEmailExisting(string $email): Result
+public function setParent(?mixed $parent): self
+public function getParent()
 ```
 
 
@@ -313,11 +313,8 @@ public function isEmailExisting(string $email): Result
 ### ManagesAddresses
 
 ```php
-public function addresses(): Result
-public function createAddress(array $attributes = []): Result
-public function address(string $addressId): Result
-public function updateAddress(string $addressId, array $attributes = []): Result
-public function deleteAddress(string $addressId): Result
+public function addresses(): Addresses
+public function hasDefaultBillingAddress(): bool
 ```
 
 ### ManagesBalance
@@ -325,55 +322,48 @@ public function deleteAddress(string $addressId): Result
 ```php
 public function balance(): float
 public function charges(): float
-public function charge(float $amount, string $paymentMethodId, array $options = []): Result
+public function charge(float $amount, string $paymentMethodId, array $options = []): Transaction
+```
+
+### ManagesCountries
+
+```php
+public function countries(): Countries
 ```
 
 ### ManagesInvoices
 
 ```php
-public function invoices(): Result
-public function invoice(string $invoiceId): Result
-public function getInvoiceTemporaryUrl(string $invoiceId): string
+public function invoices(array $parameters = []): Invoices
 ```
 
 ### ManagesOrders
 
 ```php
-public function orders(): Result
-public function createOrder(array $attributes = []): Result
-public function order(string $orderId): Result
-public function updateOrder(string $orderId, array $attributes = []): Result
-public function checkoutOrder(string $orderId): Result
-public function revokeOrder(string $orderId): Result
-public function deleteOrder(string $orderId): Result
-public function orderItems(string $orderId): Result
-public function createOrderItem(string $orderId, array $attributes = []): Result
-public function orderItem(string $orderId, string $orderItemId): Result
-public function updateOrderItem(string $orderId, string $orderItemId, array $attributes = []): Result
-public function deleteOrderItem(string $orderId, string $orderItemId): Result
+public function orders(array $parameters = []): Orders
 ```
 
 ### ManagesPaymentMethods
 
 ```php
-public function hasPaymentMethod(): bool
-public function paymentMethods(): Result
+public function paymentMethods(): PaymentMethods
+public function hasPaymentMethod(): ?PaymentMethod
+public function defaultPaymentMethod(): ?PaymentMethod
 public function hasDefaultPaymentMethod(): bool
-public function defaultPaymentMethod(): Result
-public function billingPortalUrl(string $returnUrl, array $options): string
+public function billingPortalUrl(?string $returnUrl = null, array $options = []): string
 public function createSetupIntent(array $options = []): Result
+```
+
+### ManagesProfile
+
+```php
+public function profilePortalUrl(?string $returnUrl = null, array $options = []): string
 ```
 
 ### ManagesSubscriptions
 
 ```php
-public function subscriptions(): Result
-public function subscription(string $subscriptionId): Result
-public function createSubscription(array $attributes): Result
-public function checkoutSubscription(string $subscriptionId): Result
-public function revokeSubscription(string $subscriptionId): Result
-public function resumeSubscription(string $subscriptionId): Result
-public function deleteSubscription(string $subscriptionId): Result
+public function subscriptions(): Subscriptions
 ```
 
 ### ManagesTaxation
@@ -385,9 +375,7 @@ public function vat(): float
 ### ManagesTransactions
 
 ```php
-public function transactions(): Result
-public function createTransaction(array $attributes = []): Result
-public function transaction(string $transactionId): Result
+public function transactions(): Transactions
 ```
 
 
