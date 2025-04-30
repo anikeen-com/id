@@ -15,5 +15,5 @@ trait Put
      * @throws RequestRequiresClientIdException
      * @throws GuzzleException
      */
-    abstract public function put(string $path, array $payload = [], array $parameters = [], Paginator $paginator = null): Result;
+    abstract public function put(string $path, array $payload = [], array $parameters = [], ?Paginator $paginator = null): Result;
 }

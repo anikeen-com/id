@@ -12,6 +12,7 @@ use GuzzleHttp\Exception\GuzzleException;
 trait ManagesUsers
 {
     use Get, Post;
+    use HasParent;
 
     /**
      * Get currently authed user with Bearer Token

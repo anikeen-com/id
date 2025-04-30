@@ -15,5 +15,5 @@ trait Request
      * @throws RequestRequiresClientIdException
      * @throws GuzzleException
      */
-    abstract public function request(string $method, string $path, null|array $payload = null, array $parameters = [], Paginator $paginator = null): Result;
+    abstract public function request(string $method, string $path, null|array $payload = null, array $parameters = [], ?Paginator $paginator = null): Result;
 }

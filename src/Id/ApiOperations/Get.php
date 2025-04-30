@@ -15,5 +15,5 @@ trait Get
      * @throws RequestRequiresClientIdException
      * @throws GuzzleException
      */
-    abstract public function get(string $path, array $parameters = [], Paginator $paginator = null): Result;
+    abstract public function get(string $path, array $parameters = [], ?Paginator $paginator = null): Result;
 }

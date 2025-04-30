@@ -15,5 +15,5 @@ trait Delete
      * @throws RequestRequiresClientIdException
      * @throws GuzzleException
      */
-    abstract public function delete(string $path, array $payload = [], array $parameters = [], Paginator $paginator = null): Result;
+    abstract public function delete(string $path, array $payload = [], array $parameters = [], ?Paginator $paginator = null): Result;
 }

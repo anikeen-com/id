@@ -4,6 +4,7 @@ namespace Anikeen\Id\Concerns;
 
 use Anikeen\Id\ApiOperations\Request;
 use Anikeen\Id\Exceptions\RequestRequiresClientIdException;
+use Anikeen\Id\Resources\PaymentMethods;
 use Anikeen\Id\Result;
 use GuzzleHttp\Exception\GuzzleException;
 
@@ -12,58 +13,26 @@ trait ManagesPaymentMethods
     use Request;
 
     /**
-     * Check if current user has at least one payment method.
-     *
-     * @throws RequestRequiresClientIdException
-     * @throws GuzzleException
-     */
-    public function hasPaymentMethod(): bool
-    {
-        return $this->paymentMethods()->count() > 0;
-    }
-
-    /**
      * Get payment methods from the current user.
      *
      * @throws RequestRequiresClientIdException
      * @throws GuzzleException
      */
-    public function paymentMethods(): Result
+    public function paymentMethods(): PaymentMethods
     {
-        return $this->request('GET', 'v1/payment-methods');
-    }
-
-    /**
-     * Get default payment method from the current user.
-     *
-     * @throws RequestRequiresClientIdException
-     * @throws GuzzleException
-     */
-    public function hasDefaultPaymentMethod(): bool
-    {
-        return (bool)$this->defaultPaymentMethod()->data;
-    }
-
-    /**
-     * Get default payment method from the current user.
-     *
-     * @throws RequestRequiresClientIdException
-     * @throws GuzzleException
-     */
-    public function defaultPaymentMethod(): Result
-    {
-        return $this->request('GET', 'v1/payment-methods/default');
+        return (new PaymentMethods($this->request('GET', 'v1/payment-methods')))
+            ->setBillable($this);
     }
 
     /**
      * Get billing portal URL for the current user.
      *
-     * @param string $returnUrl The URL to redirect to after the user has finished in the billing portal.
+     * @param string|null $returnUrl The URL to redirect to after the user has finished in the billing portal.
      * @param array $options Additional options for the billing portal.
      * @throws RequestRequiresClientIdException
      * @throws GuzzleException
      */
-    public function billingPortalUrl(string $returnUrl, array $options): string
+    public function billingPortalUrl(?string $returnUrl = null, array $options = []): string
     {
         return $this->request('POST', 'v1/billing/portal', [
             'return_url' => $returnUrl,

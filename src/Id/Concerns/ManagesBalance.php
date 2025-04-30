@@ -4,6 +4,7 @@ namespace Anikeen\Id\Concerns;
 
 use Anikeen\Id\ApiOperations\Request;
 use Anikeen\Id\Exceptions\RequestRequiresClientIdException;
+use Anikeen\Id\Resources\Transaction;
 use Anikeen\Id\Result;
 use GuzzleHttp\Exception\GuzzleException;
 
@@ -42,12 +43,12 @@ trait ManagesBalance
      * @throws RequestRequiresClientIdException
      * @throws GuzzleException
      */
-    public function charge(float $amount, string $paymentMethodId, array $options = []): Result
+    public function charge(float $amount, string $paymentMethodId, array $options = []): Transaction
     {
-        return $this->request('POST', 'billing/charge', [
+        return new Transaction($this->request('POST', 'billing/charge', [
             'amount' => $amount,
             'payment_method_id' => $paymentMethodId,
             'options' => $options,
-        ]);
+        ]));
     }
 }

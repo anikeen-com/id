@@ -179,7 +179,7 @@ class Result
     /**
      * Rate limit info from headers
      */
-    public function rateLimit(string $key = null): array|int|string|null
+    public function rateLimit(?string $key = null): array|int|string|null
     {
         if (!$this->response) {
             return null;

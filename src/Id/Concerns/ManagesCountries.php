@@ -4,22 +4,22 @@ namespace Anikeen\Id\Concerns;
 
 use Anikeen\Id\ApiOperations\Request;
 use Anikeen\Id\Exceptions\RequestRequiresClientIdException;
-use Anikeen\Id\Resources\Invoices;
+use Anikeen\Id\Resources\Countries;
 use GuzzleHttp\Exception\GuzzleException;
 
-trait ManagesInvoices
+trait ManagesCountries
 {
     use Request;
 
     /**
-     * Get invoices from the current user.
+     * Get available countries for the current user.
      *
      * @throws RequestRequiresClientIdException
      * @throws GuzzleException
      */
-    public function invoices(): Invoices
+    public function countries(): Countries
     {
-        return (new Invoices($this->request('GET', 'v1/invoices')))
+        return (new Countries($this->request('GET', 'v1/countries')))
             ->setBillable($this);
     }
 }

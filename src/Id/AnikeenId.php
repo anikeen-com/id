@@ -157,7 +157,7 @@ class AnikeenId
      * @param string|null $cookie
      * @return string|static
      */
-    public static function cookie(string $cookie = null): string|static
+    public static function cookie(?string $cookie = null): string|static
     {
         if (is_null($cookie)) {
             return static::$cookie;
@@ -322,7 +322,7 @@ class AnikeenId
      * @throws GuzzleException
      * @throws RequestRequiresClientIdException
      */
-    public function request(string $method, string $path, null|array $payload = null, array $parameters = [], Paginator $paginator = null): Result
+    public function request(string $method, string $path, null|array $payload = null, array $parameters = [], ?Paginator $paginator = null): Result
     {
         if ($paginator !== null) {
             $parameters[$paginator->action] = $paginator->cursor();
@@ -368,7 +368,7 @@ class AnikeenId
      * @throws GuzzleException
      * @throws RequestRequiresClientIdException
      */
-    public function get(string $path, array $parameters = [], Paginator $paginator = null): Result
+    public function get(string $path, array $parameters = [], ?Paginator $paginator = null): Result
     {
         return $this->request('GET', $path, null, $parameters, $paginator);
     }
@@ -377,7 +377,7 @@ class AnikeenId
      * @throws GuzzleException
      * @throws RequestRequiresClientIdException
      */
-    public function post(string $path, array $payload = [], array $parameters = [], Paginator $paginator = null): Result
+    public function post(string $path, array $payload = [], array $parameters = [], ?Paginator $paginator = null): Result
     {
         return $this->request('POST', $path, $payload, $parameters, $paginator);
     }
@@ -386,7 +386,7 @@ class AnikeenId
      * @throws GuzzleException
      * @throws RequestRequiresClientIdException
      */
-    public function put(string $path, array $payload = [], array $parameters = [], Paginator $paginator = null): Result
+    public function put(string $path, array $payload = [], array $parameters = [], ?Paginator $paginator = null): Result
     {
         return $this->request('PUT', $path, $payload, $parameters, $paginator);
     }
@@ -395,7 +395,7 @@ class AnikeenId
      * @throws GuzzleException
      * @throws RequestRequiresClientIdException
      */
-    public function delete(string $path, array $payload = [], array $parameters = [], Paginator $paginator = null): Result
+    public function delete(string $path, array $payload = [], array $parameters = [], ?Paginator $paginator = null): Result
     {
         return $this->request('DELETE', $path, $payload, $parameters, $paginator);
     }

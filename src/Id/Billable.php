@@ -5,9 +5,11 @@ namespace Anikeen\Id;
 use Anikeen\Id\ApiOperations\Request;
 use Anikeen\Id\Concerns\ManagesAddresses;
 use Anikeen\Id\Concerns\ManagesBalance;
+use Anikeen\Id\Concerns\ManagesCountries;
 use Anikeen\Id\Concerns\ManagesInvoices;
 use Anikeen\Id\Concerns\ManagesOrders;
 use Anikeen\Id\Concerns\ManagesPaymentMethods;
+use Anikeen\Id\Concerns\ManagesProfile;
 use Anikeen\Id\Concerns\ManagesSubscriptions;
 use Anikeen\Id\Concerns\ManagesTaxation;
 use Anikeen\Id\Concerns\ManagesTransactions;
@@ -20,9 +22,11 @@ trait Billable
 {
     use ManagesAddresses;
     use ManagesBalance;
+    use ManagesCountries;
     use ManagesInvoices;
     use ManagesOrders;
     use ManagesPaymentMethods;
+    use ManagesProfile;
     use ManagesSubscriptions;
     use ManagesTaxation;
     use ManagesTransactions;
@@ -36,7 +40,7 @@ trait Billable
      * @throws RequestRequiresClientIdException
      * @throws GuzzleException
      */
-    protected function getUserData(): stdClass
+    public function getUserData(): stdClass
     {
         if (!$this->userData) {
             $this->userData = $this->request('GET', 'v1/user')->data;
@@ -50,7 +54,7 @@ trait Billable
      * @throws RequestRequiresClientIdException
      * @throws GuzzleException
      */
-    protected function request(string $method, string $path, null|array $payload = null, array $parameters = [], Paginator $paginator = null): Result
+    public function request(string $method, string $path, null|array $payload = null, array $parameters = [], ?Paginator $paginator = null): Result
     {
         $anikeenId = new AnikeenId();
         $anikeenId->withToken($this->{AnikeenId::getAccessTokenField()});
