@@ -14,11 +14,11 @@ class Subscriptions extends BaseCollection
      * Create a new subscription for the current user.
      *
      * @param array{
-     *      name: null,
+     *      name: string,
      *      description: null|string,
      *      unit: string,
      *      price: float,
-     *      vat_rate: null|float,
+     *      vat_rate: float,
      *      payload: null|array,
      *      ends_at: null|string,
      *      webhook_url: null|string,
@@ -28,7 +28,7 @@ class Subscriptions extends BaseCollection
      *    - description:    The description (optional)
      *    - unit:           The unit (e.g. "hour", "day", "week", "month", "year")
      *    - price:          The price per unit
-     *    - vat_rate:       The VAT rate (optional)
+     *    - vat_rate:       The VAT rate (required when set)
      *    - payload:        The payload (optional)
      *    - ends_at:        The end date (optional)
      *    - webhook_url:    The webhook URL (optional)

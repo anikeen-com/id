@@ -26,21 +26,21 @@ class Subscription extends BaseResource
      * Update a given subscription from the current user.
      *
      * @param array{
-     *      name: null,
+     *      name: string,
      *      description: null|string,
      *      unit: string,
      *      price: float,
-     *      vat_rate: null|float,
+     *      vat_rate: float,
      *      payload: null|array,
      *      ends_at: null|string,
      *      webhook_url: null|string,
      *      webhook_secret: null|string
      *  } $attributes The subscription data:
-     *    - name:           The name
+     *    - name:           The name (required when set)
      *    - description:    The description (optional)
-     *    - unit:           The unit (e.g. "hour", "day", "week", "month", "year")
-     *    - price:          The price per unit
-     *    - vat_rate:       The VAT rate (optional)
+     *    - unit:           The unit (required when set, e.g. "hour", "day", "week", "month", "year")
+     *    - price:          The price per unit (required when set)
+     *    - vat_rate:       The VAT rate (required when set)
      *    - payload:        The payload (optional)
      *    - ends_at:        The end date (optional)
      *    - webhook_url:    The webhook URL (optional)
