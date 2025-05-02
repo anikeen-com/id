@@ -4,7 +4,7 @@ namespace Anikeen\Id\Concerns;
 
 use Anikeen\Id\ApiOperations\Request;
 use Anikeen\Id\Exceptions\RequestRequiresClientIdException;
-use GuzzleHttp\Exception\GuzzleException;
+use Throwable;
 
 trait ManagesTaxation
 {
@@ -13,11 +13,10 @@ trait ManagesTaxation
     /**
      * Get VAT for the current user.
      *
-     * @throws RequestRequiresClientIdException
-     * @throws GuzzleException
+     * @throws Throwable
      */
-    public function vat(): float
+    public function vatRate(): float
     {
-        return $this->getUserData()->vat;
+        return $this->getUserData()->vat_rate;
     }
 }

@@ -5,7 +5,7 @@ namespace Anikeen\Id\Concerns;
 use Anikeen\Id\ApiOperations\Post;
 use Anikeen\Id\Exceptions\RequestRequiresClientIdException;
 use Anikeen\Id\Result;
-use GuzzleHttp\Exception\GuzzleException;
+use Throwable;
 
 trait ManagesPricing
 {
@@ -29,8 +29,7 @@ trait ManagesPricing
      * } $attributes The order data:
      *   - country_iso:     ISO 3166-1 alpha-2 country code
      *   - items:           Array of order items (each with type, name, price, unit, units, and quantity)
-     * @throws RequestRequiresClientIdException
-     * @throws GuzzleException
+     * @throws Throwable
      */
     public function createOrderPreview(array $attributes = []): Result
     {

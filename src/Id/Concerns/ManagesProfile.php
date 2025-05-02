@@ -5,7 +5,7 @@ namespace Anikeen\Id\Concerns;
 use Anikeen\Id\ApiOperations\Request;
 use Anikeen\Id\Exceptions\RequestRequiresClientIdException;
 use Anikeen\Id\Result;
-use GuzzleHttp\Exception\GuzzleException;
+use Throwable;
 
 trait ManagesProfile
 {
@@ -17,8 +17,7 @@ trait ManagesProfile
      * @param string|null $returnUrl The URL to redirect to after the user has completed their profile.
      * @param array $options Additional options for the profile URL.
      * @return string
-     * @throws GuzzleException
-     * @throws RequestRequiresClientIdException
+     * @throws Throwable
      */
     public function profilePortalUrl(?string $returnUrl = null, array $options = []): string
     {

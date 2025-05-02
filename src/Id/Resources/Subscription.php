@@ -3,8 +3,7 @@
 namespace Anikeen\Id\Resources;
 
 use Anikeen\Id\Concerns\HasBillable;
-use Anikeen\Id\Exceptions\RequestRequiresClientIdException;
-use GuzzleHttp\Exception\GuzzleException;
+use Throwable;
 
 /**
  * @property string $id
@@ -26,6 +25,7 @@ class Subscription extends BaseResource
      * Update a given subscription from the current user.
      *
      * @param array{
+     *      group: string,
      *      name: string,
      *      description: null|string,
      *      unit: string,
@@ -36,6 +36,7 @@ class Subscription extends BaseResource
      *      webhook_url: null|string,
      *      webhook_secret: null|string
      *  } $attributes The subscription data:
+     *    - group:          The group (optional)
      *    - name:           The name (required when set)
      *    - description:    The description (optional)
      *    - unit:           The unit (required when set, e.g. "hour", "day", "week", "month", "year")
@@ -45,56 +46,62 @@ class Subscription extends BaseResource
      *    - ends_at:        The end date (optional)
      *    - webhook_url:    The webhook URL (optional)
      *    - webhook_secret: The webhook secret (optional)
-     * @throws RequestRequiresClientIdException
-     * @throws GuzzleException
+     * @throws Throwable
      */
     public function update(array $attributes): self
     {
-        return (new self($this->billable->request('PUT', sprintf('v1/subscriptions/%s', $this->id), $attributes)))
+        return (new self(fn() => $this->billable->request('PUT', sprintf('v1/subscriptions/%s', $this->id), $attributes)))
             ->setBillable($this->billable);
     }
 
     /**
      * Force given subscription to check out (trusted apps only).
      *
-     * @throws RequestRequiresClientIdException
-     * @throws GuzzleException
+     * @throws Throwable
      */
     public function checkout(): self
     {
-        return (new self($this->billable->request('PUT', sprintf('v1/subscriptions/%s/checkout', $this->id))))
+        return (new self(fn() => $this->billable->request('PUT', sprintf('v1/subscriptions/%s/checkout', $this->id))))
             ->setBillable($this->billable);
     }
 
     /**
      * Revoke a given running subscription from the current user.
      *
-     * @throws RequestRequiresClientIdException
-     * @throws GuzzleException
+     * @throws Throwable
      */
     public function revoke(): self
     {
-        return (new self($this->billable->request('PUT', sprintf('v1/subscriptions/%s/revoke', $this->id))))
+        return (new self(fn() => $this->billable->request('PUT', sprintf('v1/subscriptions/%s/revoke', $this->id))))
+            ->setBillable($this->billable);
+    }
+
+    /**
+     * Pause a given running subscription from the current user.
+     *
+     * @throws Throwable
+     */
+    public function pause(): self
+    {
+        return (new self(fn() => $this->billable->request('PUT', sprintf('v1/subscriptions/%s/pause', $this->id))))
             ->setBillable($this->billable);
     }
 
     /**
      * Resume a given running subscription from the current user.
      *
-     * @throws RequestRequiresClientIdException
-     * @throws GuzzleException
+     * @throws Throwable
      */
     public function resume(): self
     {
-        return (new self($this->billable->request('PUT', sprintf('v1/subscriptions/%s/resume', $this->id))))
+        return (new self(fn() => $this->billable->request('PUT', sprintf('v1/subscriptions/%s/resume', $this->id))))
             ->setBillable($this->billable);
     }
 
     /**
      * Delete a given subscription from the current user.
      *
-     * @throws RequestRequiresClientIdException
-     * @throws GuzzleException
+     * @throws Throwable
      */
     public function delete(): bool
     {

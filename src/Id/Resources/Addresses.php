@@ -3,9 +3,7 @@
 namespace Anikeen\Id\Resources;
 
 use Anikeen\Id\Concerns\HasBillable;
-use Anikeen\Id\Exceptions\RequestRequiresClientIdException;
-use Anikeen\Id\Result;
-use GuzzleHttp\Exception\GuzzleException;
+use Throwable;
 
 class Addresses extends BaseCollection
 {
@@ -44,12 +42,11 @@ class Addresses extends BaseCollection
      * 　  - email:                   Email address (optional, e.g. for delivery notifications)
      * 　  - primary:                 Whether this address should be the primary address (optional)
      * 　  - primary_billing_address: Whether this address should be the primary billing address (optional)
-     * @throws RequestRequiresClientIdException
-     * @throws GuzzleException
+     * @throws Throwable
      */
     public function create(array $attributes = []): Address
     {
-        return (new Address($this->billable->request('POST', 'v1/addresses', $attributes)))
+        return (new Address(fn() => $this->billable->request('POST', 'v1/addresses', $attributes)))
             ->setBillable($this->billable);
     }
 
@@ -58,31 +55,25 @@ class Addresses extends BaseCollection
      */
     public function find(string $id): ?Address
     {
-        $result = $this->billable->request('GET', sprintf('v1/addresses/%s', $id));
-
-        return $result->success() ?
-            (new Address($result))
-                ->setBillable($this->billable)
-            : null;
+        return (new Address(fn() => $this->billable->request('GET', sprintf('v1/addresses/%s', $id))))
+                ->setBillable($this->billable);
     }
 
     /**
      * Get default address from the current user.
      *
-     * @throws RequestRequiresClientIdException
-     * @throws GuzzleException
+     * @throws Throwable
      */
     public function defaultBillingAddress(): Address
     {
-        return (new Address($this->billable->request('GET', sprintf('v1/addresses/%s', $this->billable->getUserData()->billing_address_id))))
+        return (new Address(fn() => $this->billable->request('GET', sprintf('v1/addresses/%s', $this->billable->getUserData()->billing_address_id))))
             ->setBillable($this->billable);
     }
 
     /**
      * Check if the current user has a default billing address.
      *
-     * @throws RequestRequiresClientIdException
-     * @throws GuzzleException
+     * @throws Throwable
      */
     public function hasDefaultBillingAddress(): bool
     {

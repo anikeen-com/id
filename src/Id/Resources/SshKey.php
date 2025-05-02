@@ -3,8 +3,7 @@
 namespace Anikeen\Id\Resources;
 
 use Anikeen\Id\Concerns\HasParent;
-use Anikeen\Id\Exceptions\RequestRequiresClientIdException;
-use GuzzleHttp\Exception\GuzzleException;
+use Throwable;
 
 /**
  * @property string $id
@@ -16,8 +15,7 @@ class SshKey extends BaseResource
     /**
      * Deletes a given ssh key for the currently authed user.
      *
-     * @throws RequestRequiresClientIdException
-     * @throws GuzzleException
+     * @throws Throwable
      */
     public function delete(): bool
     {

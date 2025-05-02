@@ -3,10 +3,8 @@
 namespace Anikeen\Id\Concerns;
 
 use Anikeen\Id\ApiOperations\Request;
-use Anikeen\Id\Exceptions\RequestRequiresClientIdException;
 use Anikeen\Id\Resources\Transaction;
-use Anikeen\Id\Result;
-use GuzzleHttp\Exception\GuzzleException;
+use Throwable;
 
 trait ManagesBalance
 {
@@ -15,8 +13,7 @@ trait ManagesBalance
     /**
      * Get balance from the current user.
      *
-     * @throws RequestRequiresClientIdException
-     * @throws GuzzleException
+     * @throws Throwable
      */
     public function balance(): float
     {
@@ -26,8 +23,7 @@ trait ManagesBalance
     /**
      * Get charges from the current user.
      *
-     * @throws RequestRequiresClientIdException
-     * @throws GuzzleException
+     * @throws Throwable
      */
     public function charges(): float
     {
@@ -40,12 +36,11 @@ trait ManagesBalance
      * @param float $amount Amount to charge in euros.
      * @param string $paymentMethodId Payment method ID.
      * @param array $options Additional options for the charge.
-     * @throws RequestRequiresClientIdException
-     * @throws GuzzleException
+     * @throws Throwable
      */
     public function charge(float $amount, string $paymentMethodId, array $options = []): Transaction
     {
-        return new Transaction($this->request('POST', 'billing/charge', [
+        return new Transaction(fn() => $this->request('POST', 'billing/charge', [
             'amount' => $amount,
             'payment_method_id' => $paymentMethodId,
             'options' => $options,

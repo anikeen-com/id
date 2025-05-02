@@ -3,9 +3,8 @@
 namespace Anikeen\Id\Resources;
 
 use Anikeen\Id\Concerns\HasBillable;
-use Anikeen\Id\Exceptions\RequestRequiresClientIdException;
-use Anikeen\Id\Result;
-use GuzzleHttp\Exception\GuzzleException;
+use Anikeen\Id\Exceptions\ResourceException;
+use Throwable;
 
 class Transactions extends BaseCollection
 {
@@ -15,13 +14,13 @@ class Transactions extends BaseCollection
      * Create a new transaction for the current user.
      *
      * @param array $attributes The attributes for the transaction.
-     * @throws RequestRequiresClientIdException
-     * @throws GuzzleException
+     * @throws Throwable
      * @todo Add type hinting for the attributes array.
      */
     public function create(array $attributes = []): Transaction
     {
-        return new Transaction($this->billable->request('POST', 'v1/transactions', $attributes));
+        return (new Transaction($this->billable->request('POST', 'v1/transactions', $attributes)))
+            ->setBillable($this->billable);
     }
 
     /**
@@ -29,11 +28,7 @@ class Transactions extends BaseCollection
      */
     public function find(string $id): ?Transaction
     {
-        $result = $this->billable->request('GET', sprintf('v1/transactions/%s', $id));
-
-        return $result->success()
-            ? (new Transaction($result))
-                ->setBillable($this->billable)
-            : null;
+        return (new Transaction(fn() => $this->billable->request('GET', sprintf('v1/transactions/%s', $id))))
+                ->setBillable($this->billable);
     }
 }

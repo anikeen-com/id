@@ -5,7 +5,7 @@ namespace Anikeen\Id\Concerns;
 use Anikeen\Id\ApiOperations\Request;
 use Anikeen\Id\Exceptions\RequestRequiresClientIdException;
 use Anikeen\Id\Resources\Subscriptions;
-use GuzzleHttp\Exception\GuzzleException;
+use Throwable;
 
 trait ManagesSubscriptions
 {
@@ -14,12 +14,15 @@ trait ManagesSubscriptions
     /**
      * Get subscriptions from the current user.
      *
-     * @throws RequestRequiresClientIdException
-     * @throws GuzzleException
+     * @throws Throwable
      */
     public function subscriptions(): Subscriptions
     {
-        return (new Subscriptions($this->request('GET', 'v1/subscriptions')))
-            ->setBillable($this);
+        if (!isset($this->subscriptionsCache)) {
+            $this->subscriptionsCache = Subscriptions::builder(fn() => $this->request('GET', 'v1/subscriptions'))
+                ->setBillable($this);
+        }
+
+        return $this->subscriptionsCache;
     }
 }

@@ -3,9 +3,8 @@
 namespace Anikeen\Id\Resources;
 
 use Anikeen\Id\Concerns\HasBillable;
-use Anikeen\Id\Exceptions\RequestRequiresClientIdException;
 use Anikeen\Id\Result;
-use GuzzleHttp\Exception\GuzzleException;
+use Throwable;
 
 class Orders extends BaseCollection
 {
@@ -62,29 +61,22 @@ class Orders extends BaseCollection
      *   - billing_address:  Billing address (ISO 3166-1 alpha-2 country code)
      *   - shipping_address: Shipping address (first name, last name, ISO 3166-1 alpha-2 country code)
      *   - items:            Array of order items (each with type, name, price, unit, units, and quantity)
-     * @throws RequestRequiresClientIdException
-     * @throws GuzzleException
+     * @throws Throwable
      */
     public function create(array $attributes = []): Order
     {
-        return (new Order($this->billable->request('POST', 'v1/orders', $attributes)))
+        return (new Order(fn() => $this->billable->request('POST', 'v1/orders', $attributes)))
             ->setBillable($this->billable);
     }
 
     /**
      * Get given order from the current user.
      *
-     * @throws RequestRequiresClientIdException
-     * @throws GuzzleException
+     * @throws Throwable
      */
     public function find(string $id): ?Order
     {
-        /** @var Result $result */
-        $result = $this->billable->request('GET', sprintf('v1/orders/%s', $id));
-
-        return $result->success()
-            ? (new Order($result))
-                ->setBillable($this->billable)
-            : null;
+        return (new Order(fn() => $this->billable->request('GET', sprintf('v1/orders/%s', $id))))
+            ->setBillable($this->billable);
     }
 }

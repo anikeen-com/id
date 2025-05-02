@@ -4,8 +4,7 @@ namespace Anikeen\Id\Resources;
 
 use Anikeen\Id\Concerns\HasBillable;
 use Anikeen\Id\Concerns\HasParent;
-use Anikeen\Id\Exceptions\RequestRequiresClientIdException;
-use GuzzleHttp\Exception\GuzzleException;
+use Throwable;
 
 /**
  * @property string $id
@@ -31,12 +30,11 @@ class OrderItem extends BaseResource
      *       }>
      *   } $attributes The order data:
      *     - items:           Array of order items, each with type, name, description, price, unit, and quantity
-     * @throws RequestRequiresClientIdException
-     * @throws GuzzleException
+     * @throws Throwable
      */
     public function update(array $attributes = []): self
     {
-        return (new self($this->billable->request('PUT', sprintf('v1/orders/%s/items/%s', $this->parent->id, $this->id), $attributes)))
+        return (new self(fn() => $this->billable->request('PUT', sprintf('v1/orders/%s/items/%s', $this->parent->id, $this->id), $attributes)))
             ->setBillable($this->billable)
             ->setParent($this->parent);
     }
@@ -44,8 +42,7 @@ class OrderItem extends BaseResource
     /**
      * Delete given order item from given order.
      *
-     * @throws RequestRequiresClientIdException
-     * @throws GuzzleException
+     * @throws Throwable
      */
     public function delete(): bool
     {

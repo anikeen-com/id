@@ -13,10 +13,9 @@ use Anikeen\Id\Concerns\ManagesProfile;
 use Anikeen\Id\Concerns\ManagesSubscriptions;
 use Anikeen\Id\Concerns\ManagesTaxation;
 use Anikeen\Id\Concerns\ManagesTransactions;
-use Anikeen\Id\Exceptions\RequestRequiresClientIdException;
 use Anikeen\Id\Helpers\Paginator;
-use GuzzleHttp\Exception\GuzzleException;
 use stdClass;
+use Throwable;
 
 trait Billable
 {
@@ -32,27 +31,23 @@ trait Billable
     use ManagesTransactions;
     use Request;
 
-    protected stdClass|null $userData = null;
-
     /**
      * Get the currently authenticated user.
      *
-     * @throws RequestRequiresClientIdException
-     * @throws GuzzleException
+     * @throws Throwable
      */
     public function getUserData(): stdClass
     {
-        if (!$this->userData) {
-            $this->userData = $this->request('GET', 'v1/user')->data;
+        if (!isset($this->userDataCache)) {
+            $this->userDataCache = $this->request('GET', 'v1/user')->data;
         }
-        return $this->userData;
+        return $this->userDataCache;
     }
 
     /**
      * Make a request to the Anikeen API.
      *
-     * @throws RequestRequiresClientIdException
-     * @throws GuzzleException
+     * @throws Throwable
      */
     public function request(string $method, string $path, null|array $payload = null, array $parameters = [], ?Paginator $paginator = null): Result
     {

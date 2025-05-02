@@ -3,8 +3,7 @@
 namespace Anikeen\Id\Resources;
 
 use Anikeen\Id\Concerns\HasBillable;
-use Anikeen\Id\Exceptions\RequestRequiresClientIdException;
-use GuzzleHttp\Exception\GuzzleException;
+use Throwable;
 
 /**
  * @property string $id
@@ -55,44 +54,40 @@ class Order extends BaseResource
      *  } $attributes The order data:
      *    - billing_address:  Billing address (ISO 3166-1 alpha-2 country code)
      *    - shipping_address: Shipping address (first name, last name, ISO 3166-1 alpha-2 country code)
-     * @throws RequestRequiresClientIdException
-     * @throws GuzzleException
+     * @throws Throwable
      */
     public function update(array $attributes = []): self
     {
-        return (new self($this->billable->request('PUT', sprintf('v1/orders/%s', $this->id), $attributes)))
+        return (new self(fn() => $this->billable->request('PUT', sprintf('v1/orders/%s', $this->id), $attributes)))
             ->setBillable($this->billable);
     }
 
     /**
      * Checkout given order from the current user.
      *
-     * @throws RequestRequiresClientIdException
-     * @throws GuzzleException
+     * @throws Throwable
      */
-    public function checkout(string $orderId): self
+    public function checkout(): self
     {
-        return (new self($this->billable->request('PUT', sprintf('v1/orders/%s/checkout', $this->id))))
+        return (new self(fn() => $this->billable->request('PUT', sprintf('v1/orders/%s/checkout', $this->id))))
             ->setBillable($this->billable);
     }
 
     /**
      * Revoke given order from the current user.
      *
-     * @throws RequestRequiresClientIdException
-     * @throws GuzzleException
+     * @throws Throwable
      */
-    public function revoke(string $orderId): self
+    public function revoke(): self
     {
-        return (new self($this->billable->request('PUT', sprintf('v1/orders/%s/revoke', $this->id))))
+        return (new self(fn() => $this->billable->request('PUT', sprintf('v1/orders/%s/revoke', $this->id))))
             ->setBillable($this->billable);
     }
 
     /**
      * Delete given order from the current user.
      *
-     * @throws RequestRequiresClientIdException
-     * @throws GuzzleException
+     * @throws Throwable
      */
     public function delete(): bool
     {
@@ -102,12 +97,11 @@ class Order extends BaseResource
     /**
      * Get order items from given order.
      *
-     * @throws RequestRequiresClientIdException
-     * @throws GuzzleException
+     * @throws Throwable
      */
     public function orderItems(array $parameters = []): OrderItems
     {
-        return (new OrderItems($this->billable->request('GET', sprintf('v1/orders/%s/items', $this->id), [], $parameters)))
+        return OrderItems::builder(fn() => $this->billable->request('GET', sprintf('v1/orders/%s/items', $this->id), [], $parameters))
             ->setBillable($this->billable)
             ->setParent($this);
     }

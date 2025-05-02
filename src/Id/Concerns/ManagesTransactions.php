@@ -6,7 +6,7 @@ use Anikeen\Id\ApiOperations\Request;
 use Anikeen\Id\Exceptions\RequestRequiresClientIdException;
 use Anikeen\Id\Resources\Transactions;
 use Anikeen\Id\Result;
-use GuzzleHttp\Exception\GuzzleException;
+use Throwable;
 
 trait ManagesTransactions
 {
@@ -15,12 +15,15 @@ trait ManagesTransactions
     /**
      * Get transactions from the current user.
      *
-     * @throws RequestRequiresClientIdException
-     * @throws GuzzleException
+     * @throws Throwable
      */
     public function transactions(): Transactions
     {
-        return (new Transactions($this->request('GET', 'v1/transactions')))
-            ->setBillable($this);;
+        if (!isset($this->transactionsCache)) {
+            $this->transactionsCache = Transactions::builder(fn() => $this->request('GET', 'v1/transactions'))
+                ->setBillable($this);
+        }
+
+        return $this->transactionsCache;
     }
 }

@@ -2,17 +2,38 @@
 
 namespace Anikeen\Id\Resources;
 
-use Anikeen\Id\Concerns\MagicProperties;
+use Anikeen\Id\Exceptions\ResourceException;
 use Anikeen\Id\Result;
 use JsonSerializable;
 
 abstract class BaseResource implements JsonSerializable
 {
-    use MagicProperties;
+    public Result $result;
 
-    public function __construct(protected Result $result)
+    /**
+     * @throws ResourceException
+     */
+    public function __construct(callable $callable)
     {
-        $this->setMagicProperties($this->result->data);
+        $this->result = $callable();
+
+        if (!$this->result->success()) {
+            throw new ResourceException(sprintf('%s for resource [%s]', rtrim($this->result->data->message, '.'), get_called_class()), $this->result->response->getStatusCode());
+        }
+
+        foreach ($this->result->data as $key => $value) {
+            if (!property_exists($this, $key)) {
+                $this->{$key} = $value;
+            }
+        }
+    }
+
+    /**
+     * Returns the collection of resources as a JSON string.
+     */
+    public function jsonSerialize(): array
+    {
+        return $this->toArray();
     }
 
     /**
@@ -23,11 +44,13 @@ abstract class BaseResource implements JsonSerializable
         return (array)$this->result->data;
     }
 
-    /**
-     * Returns the collection of resources as a JSON string.
-     */
-    public function jsonSerialize(): array
+    public function __get(string $name)
     {
-        return $this->toArray();
+        return null;
+    }
+
+    public function __isset(string $name): bool
+    {
+        return false;
     }
 }

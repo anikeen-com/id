@@ -3,9 +3,7 @@
 namespace Anikeen\Id\Resources;
 
 use Anikeen\Id\Concerns\HasBillable;
-use Anikeen\Id\Exceptions\RequestRequiresClientIdException;
-use Anikeen\Id\Result;
-use GuzzleHttp\Exception\GuzzleException;
+use Throwable;
 
 /**
  * @property string $id
@@ -63,20 +61,18 @@ class Address extends BaseResource
      *    - email:                   Email address (optional, e.g. for delivery notifications)
      *    - primary:                 Whether this address should be the primary address (optional)
      *    - primary_billing_address: Whether this address should be the primary billing address (optional)
-     * @throws RequestRequiresClientIdException
-     * @throws GuzzleException
+     * @throws Throwable
      */
     public function update(array $attributes = []): self
     {
-        return (new self($this->billable->request('PUT', sprintf('v1/addresses/%s', $this->id), $attributes)))
+        return (new self(fn() => $this->billable->request('PUT', sprintf('v1/addresses/%s', $this->id), $attributes)))
             ->setBillable($this->billable);
     }
 
     /**
      * Delete given address from the current user.
      *
-     * @throws RequestRequiresClientIdException
-     * @throws GuzzleException
+     * @throws Throwable
      */
     public function delete(): bool
     {

@@ -7,7 +7,7 @@ use Anikeen\Id\Exceptions\RequestRequiresClientIdException;
 use Anikeen\Id\Resources\PaymentMethod;
 use Anikeen\Id\Resources\PaymentMethods;
 use Anikeen\Id\Result;
-use GuzzleHttp\Exception\GuzzleException;
+use Throwable;
 
 trait ManagesPaymentMethods
 {
@@ -16,21 +16,24 @@ trait ManagesPaymentMethods
     /**
      * Get payment methods from the current user.
      *
-     * @throws RequestRequiresClientIdException
-     * @throws GuzzleException
+     * @throws Throwable
      */
     public function paymentMethods(): PaymentMethods
     {
-        return (new PaymentMethods($this->request('GET', 'v1/payment-methods')))
-            ->setBillable($this);
+        if (!isset($this->paymentMethodsCache)) {;
+            $this->paymentMethodsCache = PaymentMethods::builder(
+                fn() => $this->request('GET', 'v1/payment-methods')
+            )->setBillable($this);
+        }
+
+        return $this->paymentMethodsCache;
     }
 
     /**
      * Check if current user has at least one payment method.
      *
      * @see \Anikeen\Id\Resources\PaymentMethods::hasPaymentMethod()
-     * @throws RequestRequiresClientIdException
-     * @throws GuzzleException
+     * @throws Throwable
      */
     public function hasPaymentMethod(): ?PaymentMethod
     {
@@ -41,8 +44,7 @@ trait ManagesPaymentMethods
      * Get default payment method from the current user.
      *
      * @see \Anikeen\Id\Resources\PaymentMethods::defaultPaymentMethod()
-     * @throws RequestRequiresClientIdException
-     * @throws GuzzleException
+     * @throws Throwable
      */
     public function defaultPaymentMethod(): ?PaymentMethod
     {
@@ -53,8 +55,7 @@ trait ManagesPaymentMethods
      * Check if the current user has a default payment method.
      *
      * @see \Anikeen\Id\Resources\PaymentMethods::hasDefaultPaymentMethod()
-     * @throws RequestRequiresClientIdException
-     * @throws GuzzleException
+     * @throws Throwable
      */
     public function hasDefaultPaymentMethod(): bool
     {
@@ -66,8 +67,7 @@ trait ManagesPaymentMethods
      *
      * @param string|null $returnUrl The URL to redirect to after the user has finished in the billing portal.
      * @param array $options Additional options for the billing portal.
-     * @throws RequestRequiresClientIdException
-     * @throws GuzzleException
+     * @throws Throwable
      */
     public function billingPortalUrl(?string $returnUrl = null, array $options = []): string
     {
@@ -81,8 +81,7 @@ trait ManagesPaymentMethods
      * Create a new setup intent.
      *
      * @param array $options Additional options for the setup intent.
-     * @throws RequestRequiresClientIdException
-     * @throws GuzzleException
+     * @throws Throwable
      */
     public function createSetupIntent(array $options = []): Result
     {

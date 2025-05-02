@@ -6,7 +6,7 @@ namespace Anikeen\Id\Concerns;
 use Anikeen\Id\ApiOperations\Get;
 use Anikeen\Id\Exceptions\RequestRequiresClientIdException;
 use Anikeen\Id\Resources\SshKeys;
-use GuzzleHttp\Exception\GuzzleException;
+use Throwable;
 
 trait ManagesSshKeys
 {
@@ -15,12 +15,15 @@ trait ManagesSshKeys
     /**
      * Get currently authed user with Bearer Token.
      *
-     * @throws RequestRequiresClientIdException
-     * @throws GuzzleException
+     * @throws Throwable
      */
     public function sshKeysByUserId(string $sskKeyId): SshKeys
     {
-        return (new SshKeys($this->get(sprintf('v1/users/%s/ssh-keys/json', $sskKeyId))))
-            ->setParent($this);
+        if (!isset($this->sshKeysCache)) {
+            $this->sshKeysCache = SshKeys::builder(fn() => $this->get(sprintf('v1/users/%s/ssh-keys/json', $sskKeyId)))
+                ->setParent($this);
+        }
+
+        return $this->sshKeysCache;
     }
 }

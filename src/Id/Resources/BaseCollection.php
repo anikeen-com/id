@@ -2,17 +2,51 @@
 
 namespace Anikeen\Id\Resources;
 
-use Anikeen\Id\Concerns\MagicProperties;
+use Anikeen\Id\AnikeenId;
+use Anikeen\Id\Exceptions\CollectionException;
+use Anikeen\Id\Exceptions\ResourceException;
+use Anikeen\Id\Helpers\Paginator;
 use Anikeen\Id\Result;
+use Closure;
+use GuzzleHttp\Psr7\Response;
 use JsonSerializable;
+use Throwable;
 
+/**
+ * @property bool $success
+ * @property mixed $data
+ * @property int $total
+ * @property int $status
+ * @property null|array $links
+ * @property null|array $meta
+ * @property null|Paginator $paginator
+ * @property AnikeenId $anikeenId
+ * @property Response $response
+ * @property null|Throwable $exception
+ */
 abstract class BaseCollection implements JsonSerializable
 {
-    use MagicProperties;
+    private Closure $callable;
+    public ?Result $result = null;
 
-    public function __construct(protected Result $result)
+    /**
+     * @throws CollectionException
+     */
+    protected function __construct(callable $callable)
     {
-        //
+        $this->result = $callable();
+
+        if (!$this->result->success()) {
+            throw new CollectionException(sprintf('%s for collection [%s]', rtrim($this->result->data->message, '.'), get_called_class()), $this->result->response->getStatusCode());
+        }
+    }
+
+    /**
+     * @throws CollectionException
+     */
+    public static function builder(callable $callable): static
+    {
+        return new static($callable, false);
     }
 
     /**
@@ -43,4 +77,14 @@ abstract class BaseCollection implements JsonSerializable
      * Returns the Resource based on the ID.
      */
     abstract public function find(string $id): ?BaseResource;
+
+    public function __get(string $name)
+    {
+        return $this->result->{$name} ?? null;
+    }
+
+    public function __isset(string $name): bool
+    {
+        return isset($this->result->{$name});
+    }
 }

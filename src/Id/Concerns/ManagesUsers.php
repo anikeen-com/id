@@ -7,7 +7,7 @@ use Anikeen\Id\ApiOperations\Get;
 use Anikeen\Id\ApiOperations\Post;
 use Anikeen\Id\Exceptions\RequestRequiresClientIdException;
 use Anikeen\Id\Result;
-use GuzzleHttp\Exception\GuzzleException;
+use Throwable;
 
 trait ManagesUsers
 {
@@ -17,8 +17,7 @@ trait ManagesUsers
     /**
      * Get currently authed user with Bearer Token
      *
-     * @throws RequestRequiresClientIdException
-     * @throws GuzzleException
+     * @throws Throwable
      */
     public function getAuthedUser(): Result
     {
@@ -40,8 +39,7 @@ trait ManagesUsers
      *     - username:    The username (optional)
      *     - email:       The email (required)
      *     - password:    The password (optional, can be reset by the user if not provided)
-     * @throws RequestRequiresClientIdException
-     * @throws GuzzleException
+     * @throws Throwable
      */
     public function createUser(array $attributes): Result
     {
@@ -52,8 +50,7 @@ trait ManagesUsers
      * Checks if the given email exists.
      *
      * @param string $email The email to check.
-     * @throws RequestRequiresClientIdException
-     * @throws GuzzleException
+     * @throws Throwable
      */
     public function isEmailExisting(string $email): Result
     {
