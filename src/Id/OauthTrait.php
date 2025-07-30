@@ -23,12 +23,10 @@ trait OauthTrait
                     ],
             ]);
 
-            $result = new Result($response, null);
+            $result = new Result($response, null, $this);
         } catch (RequestException $exception) {
-            $result = new Result($exception->getResponse(), $exception);
+            $result = new Result($exception->getResponse(), $exception, $this);
         }
-
-        $result->anikeenId = $this;
 
         return $result;
     }
