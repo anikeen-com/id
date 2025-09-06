@@ -29,7 +29,7 @@ class Transactions extends BaseCollection
      *     - payment_intent:   The payment intent (optional)
      *     - status:           The status (e.g. "expired", "failed", "pending", "refunded", "succeeded")
      *     - type:             The type (e.g. "deposit", "withdrawal")
-     *     - amount:           The payload
+     *     - amount:           The amount
      *     - created_at:       The created at datetime string (e.g. "Y-M-D H:i:s")
      * @throws Throwable
      */
