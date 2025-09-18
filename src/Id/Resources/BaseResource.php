@@ -6,6 +6,7 @@ use Anikeen\Id\Exceptions\ResourceException;
 use Anikeen\Id\Result;
 use JsonSerializable;
 
+#[\AllowDynamicProperties]
 abstract class BaseResource implements JsonSerializable
 {
     public Result $result;

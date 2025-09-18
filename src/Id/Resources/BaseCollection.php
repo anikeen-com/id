@@ -24,6 +24,7 @@ use Throwable;
  * @property Response $response
  * @property null|Throwable $exception
  */
+#[\AllowDynamicProperties]
 abstract class BaseCollection implements JsonSerializable
 {
     private Closure $callable;
