@@ -2,6 +2,7 @@
 
 namespace Anikeen\Id\Socialite;
 
+use Anikeen\Id\AnikeenId;
 use Anikeen\Id\Enums\Scope;
 use GuzzleHttp\Exception\GuzzleException;
 use Illuminate\Http\Request;
@@ -32,9 +33,7 @@ class Provider extends AbstractProvider implements ProviderInterface
      */
     protected function getBaseUrl(): string
     {
-        $mode = config('services.anikeen.mode') ?? 'production';
-
-        return $mode === 'staging'
+        return AnikeenId::getMode() === 'staging'
             ? 'https://staging.id.anikeen.com'
             : 'https://id.anikeen.com';
     }

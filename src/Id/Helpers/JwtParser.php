@@ -2,6 +2,7 @@
 
 namespace Anikeen\Id\Helpers;
 
+use Anikeen\Id\AnikeenId;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 use Illuminate\Auth\AuthenticationException;
@@ -30,6 +31,8 @@ class JwtParser
 
     private function getOauthPublicKey(): bool|string
     {
-        return file_get_contents(dirname(__DIR__, 3) . '/oauth-public.key');
+        return AnikeenId::getMode() === 'staging'
+            ? file_get_contents(dirname(__DIR__, 3) . '/oauth-public.staging.key')
+            : file_get_contents(dirname(__DIR__, 3) . '/oauth-public.key');
     }
 }

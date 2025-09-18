@@ -67,6 +67,11 @@ class AnikeenId
     private static string $refreshTokenField = 'anikeen_id_refresh_token';
 
     /**
+     * Anikeen ID environment mode.
+     */
+    protected static ?string $mode = null;
+
+    /**
      * Guzzle is used to make http requests.
      */
     protected Client $client;
@@ -110,7 +115,7 @@ class AnikeenId
         if ($redirectUri = config('services.anikeen.redirect')) {
             $this->setRedirectUri($redirectUri);
         }
-        if (config('services.anikeen.mode') === 'staging') {
+        if (self::getMode() === 'staging') {
             self::setBaseUrl(self::$stagingBaseUrl);
         }
         if ($baseUrl = config('services.anikeen.base_url')) {
@@ -139,6 +144,11 @@ class AnikeenId
     public static function getAccessTokenField(): string
     {
         return self::$accessTokenField;
+    }
+
+    public static function getMode(): string
+    {
+        return config('services.anikeen.mode', 'production');
     }
 
     public static function useRefreshTokenField(string $refreshTokenField): void
