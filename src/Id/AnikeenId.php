@@ -67,11 +67,6 @@ class AnikeenId
     private static string $refreshTokenField = 'anikeen_id_refresh_token';
 
     /**
-     * Anikeen ID environment mode.
-     */
-    protected static ?string $mode = null;
-
-    /**
      * Guzzle is used to make http requests.
      */
     protected Client $client;
@@ -148,7 +143,7 @@ class AnikeenId
 
     public static function getMode(): string
     {
-        return config('services.anikeen.mode', 'production');
+        return config('services.anikeen.mode') ?: 'production';
     }
 
     public static function useRefreshTokenField(string $refreshTokenField): void
