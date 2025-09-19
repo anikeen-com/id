@@ -117,7 +117,7 @@ class AnikeenId
             self::setBaseUrl($baseUrl);
         }
         $this->client = new Client([
-            'base_uri' => $this->baseUrl,
+            'base_uri' => $this->baseUrl . '/api/',
         ]);
     }
 
