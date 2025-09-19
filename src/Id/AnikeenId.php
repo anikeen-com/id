@@ -47,16 +47,6 @@ class AnikeenId
     public static bool $unserializesCookies = false;
 
     /**
-     * The base URL for Anikeen ID API.
-     */
-    private static string $baseUrl = 'https://id.anikeen.com/api/';
-
-    /**
-     * The staging base URL for Anikeen ID API.
-     */
-    private static string $stagingBaseUrl = 'https://staging.id.anikeen.com/api/';
-
-    /**
      * The key for the access token.
      */
     private static string $accessTokenField = 'anikeen_id_access_token';
@@ -97,6 +87,16 @@ class AnikeenId
     protected ?string $redirectUri = null;
 
     /**
+     * The base URL for Anikeen ID.
+     */
+    protected string $baseUrl = 'https://id.anikeen.com';
+
+    /**
+     * The staging base URL for Anikeen ID.
+     */
+    protected string $stagingBaseUrl = 'https://staging.id.anikeen.com';
+
+    /**
      * Constructor.
      */
     public function __construct()
@@ -110,25 +110,25 @@ class AnikeenId
         if ($redirectUri = config('services.anikeen.redirect')) {
             $this->setRedirectUri($redirectUri);
         }
-        if (self::getMode() === 'staging') {
-            self::setBaseUrl(self::$stagingBaseUrl);
+        if (self::getMode() === 'staging' && !config('services.anikeen.base_url')) {
+            self::setBaseUrl($this->stagingBaseUrl);
         }
         if ($baseUrl = config('services.anikeen.base_url')) {
             self::setBaseUrl($baseUrl);
         }
         $this->client = new Client([
-            'base_uri' => self::$baseUrl,
+            'base_uri' => $this->baseUrl,
         ]);
     }
 
-    /**
-     * @param string $baseUrl
-     *
-     * @internal only for internal and debug purposes.
-     */
-    public static function setBaseUrl(string $baseUrl): void
+    protected function setBaseUrl(string $baseUrl): void
     {
-        self::$baseUrl = $baseUrl;
+        $this->baseUrl = $baseUrl;
+    }
+
+    public function getBaseUrl(): string
+    {
+        return rtrim($this->baseUrl, '/');
     }
 
     public static function useAccessTokenField(string $accessTokenField): void

@@ -33,9 +33,7 @@ class Provider extends AbstractProvider implements ProviderInterface
      */
     protected function getBaseUrl(): string
     {
-        return AnikeenId::getMode() === 'staging'
-            ? 'https://staging.id.anikeen.com'
-            : 'https://id.anikeen.com';
+        return app(AnikeenId::class)->getBaseUrl();
     }
 
     /**
@@ -96,5 +94,13 @@ class Provider extends AbstractProvider implements ProviderInterface
         return array_merge(parent::getTokenFields($code), [
             'grant_type' => 'authorization_code',
         ]);
+    }
+
+    /**
+     * Returns the user logout url for the provider.
+     */
+    public function getLogoutUrl(string $redirect = null): string
+    {
+        return app(AnikeenId::class)->getBaseUrl() . '/logout?redirect=' . urlencode($redirect ?: '/');
     }
 }
