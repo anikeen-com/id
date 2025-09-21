@@ -28,8 +28,6 @@ trait OauthTrait
             $result = new Result($exception->getResponse(), $exception, $this);
         }
 
-        $result->anikeenId = $this;
-
         return $result;
     }
 }
