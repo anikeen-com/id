@@ -2,14 +2,12 @@
 
 namespace Anikeen\Id\Concerns;
 
-use Anikeen\Id\ApiOperations\Request;
-use Anikeen\Id\Exceptions\RequestRequiresClientIdException;
 use Anikeen\Id\Resources\Subscriptions;
 use Throwable;
 
 trait ManagesSubscriptions
 {
-    use Request;
+    use HasBillable;
 
     /**
      * Get subscriptions from the current user.
@@ -19,7 +17,8 @@ trait ManagesSubscriptions
     public function subscriptions(): Subscriptions
     {
         if (!isset($this->subscriptionsCache)) {
-            $this->subscriptionsCache = Subscriptions::builder(fn() => $this->request('GET', 'v1/subscriptions'))
+            $this->subscriptionsCache = Subscriptions::builder(fn() => $this->anikeenId()
+                ->request('GET', 'v1/subscriptions'))
                 ->setBillable($this);
         }
 

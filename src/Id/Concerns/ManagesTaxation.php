@@ -2,13 +2,11 @@
 
 namespace Anikeen\Id\Concerns;
 
-use Anikeen\Id\ApiOperations\Request;
-use Anikeen\Id\Exceptions\RequestRequiresClientIdException;
 use Throwable;
 
 trait ManagesTaxation
 {
-    use Request;
+    use HasBillable;
 
     /**
      * Get VAT for the current user.

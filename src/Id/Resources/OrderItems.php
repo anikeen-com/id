@@ -4,7 +4,6 @@ namespace Anikeen\Id\Resources;
 
 use Anikeen\Id\Concerns\HasBillable;
 use Anikeen\Id\Concerns\HasParent;
-use Anikeen\Id\Result;
 use Throwable;
 
 class OrderItems extends BaseCollection
@@ -33,7 +32,8 @@ class OrderItems extends BaseCollection
      */
     public function create(string $orderId, array $attributes = []): OrderItem
     {
-        return (new OrderItem(fn() => $this->billable->request('POST', sprintf('v1/orders/%s', $orderId), $attributes)))
+        return (new OrderItem(fn() => $this->billable->anikeenId()
+            ->request('POST', sprintf('v1/orders/%s', $orderId), $attributes)))
             ->setBillable($this->billable)
             ->setParent($this->parent);
     }
@@ -43,7 +43,8 @@ class OrderItems extends BaseCollection
      */
     public function find(string $id): ?OrderItem
     {
-        return (new OrderItem(fn() => $this->parent->request('GET', sprintf('v1/orders/%s/items/%s', $this->parent->id, $id))))
+        return (new OrderItem(fn() => $this->parent->anikeenId()
+            ->request('GET', sprintf('v1/orders/%s/items/%s', $this->parent->id, $id))))
             ->setBillable($this->billable)
             ->setParent($this->parent);
     }

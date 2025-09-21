@@ -19,6 +19,9 @@ class Invoice extends BaseResource
      */
     public function getInvoiceTemporaryUrl(): string
     {
-        return $this->billable->request('PUT', sprintf('v1/invoices/%s', $this->id))->data->temporary_url;
+        return $this->billable->anikeenId()
+            ->request('PUT', sprintf('v1/invoices/%s', $this->id))
+            ->data
+            ->temporary_url;
     }
 }

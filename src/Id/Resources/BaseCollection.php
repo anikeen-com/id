@@ -4,7 +4,6 @@ namespace Anikeen\Id\Resources;
 
 use Anikeen\Id\AnikeenId;
 use Anikeen\Id\Exceptions\CollectionException;
-use Anikeen\Id\Exceptions\ResourceException;
 use Anikeen\Id\Helpers\Paginator;
 use Anikeen\Id\Result;
 use Closure;

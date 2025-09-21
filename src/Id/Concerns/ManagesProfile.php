@@ -2,14 +2,11 @@
 
 namespace Anikeen\Id\Concerns;
 
-use Anikeen\Id\ApiOperations\Request;
-use Anikeen\Id\Exceptions\RequestRequiresClientIdException;
-use Anikeen\Id\Result;
 use Throwable;
 
 trait ManagesProfile
 {
-    use Request;
+    use HasBillable;
 
     /**
      * Get the profile url for the current user.
@@ -21,7 +18,7 @@ trait ManagesProfile
      */
     public function profilePortalUrl(?string $returnUrl = null, array $options = []): string
     {
-        return $this->request('POST', 'v1/user/profile', [
+        return $this->anikeenId()->request('POST', 'v1/user/profile', [
             'return_url' => $returnUrl,
             'options' => $options,
         ])->data->url;

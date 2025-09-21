@@ -2,14 +2,12 @@
 
 namespace Anikeen\Id\Concerns;
 
-use Anikeen\Id\ApiOperations\Request;
-use Anikeen\Id\Exceptions\RequestRequiresClientIdException;
 use Anikeen\Id\Resources\Addresses;
 use Throwable;
 
 trait ManagesAddresses
 {
-    use Request;
+    use HasBillable;
 
     /**
      * Get addresses from the current user.
@@ -19,7 +17,8 @@ trait ManagesAddresses
     public function addresses(): Addresses
     {
         if (!isset($this->addressesCache)) {
-            $this->addressesCache = Addresses::builder(fn() => $this->request('GET', 'v1/addresses'))
+            $this->addressesCache = Addresses::builder(fn() => $this->anikeenId()
+                ->request('GET', 'v1/addresses'))
                 ->setBillable($this);
         }
 
@@ -29,8 +28,8 @@ trait ManagesAddresses
     /**
      * Check if the current user has a default billing address.
      *
-     * @see \Anikeen\Id\Resources\Addresses::hasDefaultBillingAddress()
      * @throws Throwable
+     * @see \Anikeen\Id\Resources\Addresses::hasDefaultBillingAddress()
      */
     public function hasDefaultBillingAddress(): bool
     {

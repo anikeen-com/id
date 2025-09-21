@@ -58,7 +58,8 @@ class Order extends BaseResource
      */
     public function update(array $attributes = []): self
     {
-        return (new self(fn() => $this->billable->request('PUT', sprintf('v1/orders/%s', $this->id), $attributes)))
+        return (new self(fn() => $this->billable->anikeenId()
+            ->request('PUT', sprintf('v1/orders/%s', $this->id), $attributes)))
             ->setBillable($this->billable);
     }
 
@@ -69,7 +70,8 @@ class Order extends BaseResource
      */
     public function checkout(): self
     {
-        return (new self(fn() => $this->billable->request('PUT', sprintf('v1/orders/%s/checkout', $this->id))))
+        return (new self(fn() => $this->billable->anikeenId()
+            ->request('PUT', sprintf('v1/orders/%s/checkout', $this->id))))
             ->setBillable($this->billable);
     }
 
@@ -80,7 +82,8 @@ class Order extends BaseResource
      */
     public function revoke(): self
     {
-        return (new self(fn() => $this->billable->request('PUT', sprintf('v1/orders/%s/revoke', $this->id))))
+        return (new self(fn() => $this->billable->anikeenId()
+            ->request('PUT', sprintf('v1/orders/%s/revoke', $this->id))))
             ->setBillable($this->billable);
     }
 
@@ -91,7 +94,8 @@ class Order extends BaseResource
      */
     public function delete(): bool
     {
-        return $this->billable->request('DELETE', sprintf('v1/orders/%s', $this->id))->success();
+        return $this->billable->anikeenId()
+            ->request('DELETE', sprintf('v1/orders/%s', $this->id))->success();
     }
 
     /**
@@ -101,7 +105,8 @@ class Order extends BaseResource
      */
     public function orderItems(array $parameters = []): OrderItems
     {
-        return OrderItems::builder(fn() => $this->billable->request('GET', sprintf('v1/orders/%s/items', $this->id), [], $parameters))
+        return OrderItems::builder(fn() => $this->billable->anikeenId()
+            ->request('GET', sprintf('v1/orders/%s/items', $this->id), [], $parameters))
             ->setBillable($this->billable)
             ->setParent($this);
     }

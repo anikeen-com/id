@@ -3,7 +3,6 @@
 namespace Anikeen\Id\Resources;
 
 use Anikeen\Id\Concerns\HasParent;
-use Anikeen\Id\Result;
 use Throwable;
 
 class SshKeys extends BaseCollection

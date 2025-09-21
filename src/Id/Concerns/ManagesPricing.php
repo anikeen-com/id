@@ -3,7 +3,6 @@
 namespace Anikeen\Id\Concerns;
 
 use Anikeen\Id\ApiOperations\Post;
-use Anikeen\Id\Exceptions\RequestRequiresClientIdException;
 use Anikeen\Id\Result;
 use Throwable;
 

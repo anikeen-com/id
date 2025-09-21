@@ -3,7 +3,6 @@
 namespace Anikeen\Id\Resources;
 
 use Anikeen\Id\Concerns\HasBillable;
-use Anikeen\Id\Result;
 use Throwable;
 
 class Orders extends BaseCollection
@@ -65,7 +64,8 @@ class Orders extends BaseCollection
      */
     public function create(array $attributes = []): Order
     {
-        return (new Order(fn() => $this->billable->request('POST', 'v1/orders', $attributes)))
+        return (new Order(fn() => $this->billable->anikeenId()
+            ->request('POST', 'v1/orders', $attributes)))
             ->setBillable($this->billable);
     }
 
@@ -76,7 +76,8 @@ class Orders extends BaseCollection
      */
     public function find(string $id): ?Order
     {
-        return (new Order(fn() => $this->billable->request('GET', sprintf('v1/orders/%s', $id))))
+        return (new Order(fn() => $this->billable->anikeenId()
+            ->request('GET', sprintf('v1/orders/%s', $id))))
             ->setBillable($this->billable);
     }
 }

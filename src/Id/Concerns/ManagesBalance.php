@@ -2,13 +2,12 @@
 
 namespace Anikeen\Id\Concerns;
 
-use Anikeen\Id\ApiOperations\Request;
 use Anikeen\Id\Resources\Transaction;
 use Throwable;
 
 trait ManagesBalance
 {
-    use Request;
+    use HasBillable;
 
     /**
      * Get balance from the current user.
@@ -40,10 +39,12 @@ trait ManagesBalance
      */
     public function charge(float $amount, string $paymentMethodId, array $options = []): Transaction
     {
-        return new Transaction(fn() => $this->request('POST', 'billing/charge', [
-            'amount' => $amount,
-            'payment_method_id' => $paymentMethodId,
-            'options' => $options,
-        ]));
+        return (new Transaction(fn() => $this->anikeenId()
+            ->request('POST', 'billing/charge', [
+                'amount' => $amount,
+                'payment_method_id' => $paymentMethodId,
+                'options' => $options,
+            ])))
+            ->setBillable($this);
     }
 }

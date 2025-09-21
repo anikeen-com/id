@@ -3,8 +3,6 @@
 namespace Anikeen\Id\Resources;
 
 use Anikeen\Id\Concerns\HasBillable;
-use Anikeen\Id\Exceptions\ResourceException;
-use Throwable;
 
 class Transactions extends BaseCollection
 {
@@ -15,7 +13,8 @@ class Transactions extends BaseCollection
      */
     public function find(string $id): ?Transaction
     {
-        return (new Transaction(fn() => $this->billable->request('GET', sprintf('v1/transactions/%s', $id))))
+        return (new Transaction(fn() => $this->billable->anikeenId()
+            ->request('GET', sprintf('v1/transactions/%s', $id))))
             ->setBillable($this->billable);
     }
 }

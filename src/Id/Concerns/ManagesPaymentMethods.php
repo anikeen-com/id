@@ -2,8 +2,6 @@
 
 namespace Anikeen\Id\Concerns;
 
-use Anikeen\Id\ApiOperations\Request;
-use Anikeen\Id\Exceptions\RequestRequiresClientIdException;
 use Anikeen\Id\Resources\PaymentMethod;
 use Anikeen\Id\Resources\PaymentMethods;
 use Anikeen\Id\Result;
@@ -11,7 +9,7 @@ use Throwable;
 
 trait ManagesPaymentMethods
 {
-    use Request;
+    use HasBillable;
 
     /**
      * Get payment methods from the current user.
@@ -20,10 +18,10 @@ trait ManagesPaymentMethods
      */
     public function paymentMethods(): PaymentMethods
     {
-        if (!isset($this->paymentMethodsCache)) {;
-            $this->paymentMethodsCache = PaymentMethods::builder(
-                fn() => $this->request('GET', 'v1/payment-methods')
-            )->setBillable($this);
+        if (!isset($this->paymentMethodsCache)) {
+            $this->paymentMethodsCache = PaymentMethods::builder(fn() => $this->anikeenId()
+                ->request('GET', 'v1/payment-methods'))
+                ->setBillable($this);
         }
 
         return $this->paymentMethodsCache;
@@ -32,8 +30,8 @@ trait ManagesPaymentMethods
     /**
      * Check if current user has at least one payment method.
      *
-     * @see \Anikeen\Id\Resources\PaymentMethods::hasPaymentMethod()
      * @throws Throwable
+     * @see \Anikeen\Id\Resources\PaymentMethods::hasPaymentMethod()
      */
     public function hasPaymentMethod(): ?PaymentMethod
     {
@@ -43,8 +41,8 @@ trait ManagesPaymentMethods
     /**
      * Get default payment method from the current user.
      *
-     * @see \Anikeen\Id\Resources\PaymentMethods::defaultPaymentMethod()
      * @throws Throwable
+     * @see \Anikeen\Id\Resources\PaymentMethods::defaultPaymentMethod()
      */
     public function defaultPaymentMethod(): ?PaymentMethod
     {
@@ -54,8 +52,8 @@ trait ManagesPaymentMethods
     /**
      * Check if the current user has a default payment method.
      *
-     * @see \Anikeen\Id\Resources\PaymentMethods::hasDefaultPaymentMethod()
      * @throws Throwable
+     * @see \Anikeen\Id\Resources\PaymentMethods::hasDefaultPaymentMethod()
      */
     public function hasDefaultPaymentMethod(): bool
     {
@@ -71,10 +69,13 @@ trait ManagesPaymentMethods
      */
     public function billingPortalUrl(?string $returnUrl = null, array $options = []): string
     {
-        return $this->request('POST', 'v1/billing/portal', [
-            'return_url' => $returnUrl,
-            'options' => $options,
-        ])->data->url;
+        return $this->anikeenId()
+            ->request('POST', 'v1/billing/portal', [
+                'return_url' => $returnUrl,
+                'options' => $options,
+            ])
+            ->data
+            ->url;
     }
 
     /**
@@ -85,8 +86,9 @@ trait ManagesPaymentMethods
      */
     public function createSetupIntent(array $options = []): Result
     {
-        return $this->request('POST', 'v1/payment-methods', [
-            'options' => $options,
-        ]);
+        return $this->anikeenId()
+            ->request('POST', 'v1/payment-methods', [
+                'options' => $options,
+            ]);
     }
 }

@@ -4,7 +4,6 @@
 namespace Anikeen\Id\Concerns;
 
 use Anikeen\Id\ApiOperations\Get;
-use Anikeen\Id\Exceptions\RequestRequiresClientIdException;
 use Anikeen\Id\Resources\SshKeys;
 use Throwable;
 

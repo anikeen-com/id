@@ -3,6 +3,7 @@
 namespace Anikeen\Id\Resources;
 
 use Anikeen\Id\Concerns\HasBillable;
+use Anikeen\Id\Contracts\AppTokenRepository;
 use Throwable;
 
 /**
@@ -50,7 +51,8 @@ class Subscription extends BaseResource
      */
     public function update(array $attributes): self
     {
-        return (new self(fn() => $this->billable->request('PUT', sprintf('v1/subscriptions/%s', $this->id), $attributes)))
+        return (new self(fn() => $this->billable->anikeenId()
+            ->request('PUT', sprintf('v1/subscriptions/%s', $this->id), $attributes)))
             ->setBillable($this->billable);
     }
 
@@ -61,7 +63,8 @@ class Subscription extends BaseResource
      */
     public function checkout(): self
     {
-        return (new self(fn() => $this->billable->request('PUT', sprintf('v1/subscriptions/%s/checkout', $this->id))))
+        return (new self(fn() => $this->billable->anikeenId()
+            ->request('PUT', sprintf('v1/subscriptions/%s/checkout', $this->id))))
             ->setBillable($this->billable);
     }
 
@@ -76,7 +79,8 @@ class Subscription extends BaseResource
             'refund' => $refund,
         ];
 
-        return (new self(fn() => $this->billable->request('PUT', sprintf('v1/subscriptions/%s/revoke', $this->id), $attributes)))
+        return (new self(fn() => $this->billable->anikeenId()
+            ->request('PUT', sprintf('v1/subscriptions/%s/revoke', $this->id), $attributes)))
             ->setBillable($this->billable);
     }
 
@@ -87,7 +91,8 @@ class Subscription extends BaseResource
      */
     public function pause(): self
     {
-        return (new self(fn() => $this->billable->request('PUT', sprintf('v1/subscriptions/%s/pause', $this->id))))
+        return (new self(fn() => $this->billable->anikeenId()
+            ->request('PUT', sprintf('v1/subscriptions/%s/pause', $this->id))))
             ->setBillable($this->billable);
     }
 
@@ -98,17 +103,8 @@ class Subscription extends BaseResource
      */
     public function resume(): self
     {
-        return (new self(fn() => $this->billable->request('PUT', sprintf('v1/subscriptions/%s/resume', $this->id))))
+        return (new self(fn() => $this->billable->anikeenId()
+            ->request('PUT', sprintf('v1/subscriptions/%s/resume', $this->id))))
             ->setBillable($this->billable);
-    }
-
-    /**
-     * Delete a given subscription from the current user.
-     *
-     * @throws Throwable
-     */
-    public function delete(): bool
-    {
-        return $this->billable->request('DELETE', sprintf('v1/subscriptions/%s', $this->id))->success();
     }
 }

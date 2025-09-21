@@ -37,7 +37,8 @@ class PaymentMethods extends BaseCollection
     public function defaultPaymentMethod(): PaymentMethod
     {
         if (!isset($this->defaultPaymentMethodCache)) {
-            $this->defaultPaymentMethodCache = (new PaymentMethod(fn() => $this->billable->request('GET', 'v1/payment-methods/default')))
+            $this->defaultPaymentMethodCache = (new PaymentMethod(fn() => $this->billable->anikeenId()
+                ->request('GET', 'v1/payment-methods/default')))
                 ->setBillable($this->billable);
         }
 
@@ -46,10 +47,13 @@ class PaymentMethods extends BaseCollection
 
     /**
      * {@inheritDoc}
+     *
+     * @throws Throwable
      */
     public function find(string $id): ?PaymentMethod
     {
-        return (new PaymentMethod(fn() => $this->billable->request('GET', sprintf('v1/payment-methods/%s', $id))))
+        return (new PaymentMethod(fn() => $this->billable->anikeenId()
+            ->request('GET', sprintf('v1/payment-methods/%s', $id))))
             ->setBillable($this->billable);
     }
 }

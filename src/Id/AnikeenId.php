@@ -327,7 +327,7 @@ class AnikeenId
      * @throws GuzzleException
      * @throws RequestRequiresClientIdException
      */
-    public function request(string $method, string $path, null|array $payload = null, array $parameters = [], ?Paginator $paginator = null): Result
+    public function request(string $method, string $path, null|array $payload = null, array $parameters = [], ?Paginator $paginator = null, bool $useClientSecret = false): Result
     {
         if ($paginator !== null) {
             $parameters[$paginator->action] = $paginator->cursor();
@@ -335,7 +335,7 @@ class AnikeenId
 
         try {
             $response = $this->client->request($method, $path, [
-                'headers' => $this->buildHeaders((bool)$payload),
+                'headers' => $this->buildHeaders((bool)$payload, $useClientSecret),
                 'query' => Query::build($parameters),
                 'json' => $payload ?: null,
             ]);
@@ -353,14 +353,14 @@ class AnikeenId
      *
      * @throws RequestRequiresClientIdException
      */
-    private function buildHeaders(bool $json = false): array
+    private function buildHeaders(bool $json = false, bool $useClientSecret = false): array
     {
         $headers = [
             'Client-ID' => $this->getClientId(),
             'Accept' => 'application/json',
         ];
-        if ($this->token) {
-            $headers['Authorization'] = 'Bearer ' . $this->token;
+        if ($bearerToken = $useClientSecret ? $this->getClientSecret() : $this->getToken()) {
+            $headers['Authorization'] = 'Bearer ' . $bearerToken;
         }
         if ($json) {
             $headers['Content-Type'] = 'application/json';

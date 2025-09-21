@@ -13,7 +13,8 @@ class Invoices extends BaseCollection
      */
     public function find(string $id): ?Invoice
     {
-        return (new Invoice(fn() => $this->billable->request('GET', sprintf('v1/invoices/%s', $id))))
-                ->setBillable($this->billable);
+        return (new Invoice(fn() => $this->billable->anikeenId()
+            ->request('GET', sprintf('v1/invoices/%s', $id))))
+            ->setBillable($this->billable);
     }
 }

@@ -46,7 +46,8 @@ class Addresses extends BaseCollection
      */
     public function create(array $attributes = []): Address
     {
-        return (new Address(fn() => $this->billable->request('POST', 'v1/addresses', $attributes)))
+        return (new Address(fn() => $this->billable->anikeenId()
+            ->request('POST', 'v1/addresses', $attributes)))
             ->setBillable($this->billable);
     }
 
@@ -55,8 +56,9 @@ class Addresses extends BaseCollection
      */
     public function find(string $id): ?Address
     {
-        return (new Address(fn() => $this->billable->request('GET', sprintf('v1/addresses/%s', $id))))
-                ->setBillable($this->billable);
+        return (new Address(fn() => $this->billable->anikeenId()
+            ->request('GET', sprintf('v1/addresses/%s', $id))))
+            ->setBillable($this->billable);
     }
 
     /**
@@ -66,7 +68,8 @@ class Addresses extends BaseCollection
      */
     public function defaultBillingAddress(): Address
     {
-        return (new Address(fn() => $this->billable->request('GET', sprintf('v1/addresses/%s', $this->billable->getUserData()->billing_address_id))))
+        return (new Address(fn() => $this->billable->anikeenId()
+            ->request('GET', sprintf('v1/addresses/%s', $this->billable->getUserData()->billing_address_id))))
             ->setBillable($this->billable);
     }
 

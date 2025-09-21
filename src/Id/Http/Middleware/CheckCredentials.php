@@ -9,7 +9,7 @@ use Illuminate\Auth\AuthenticationException;
 use Illuminate\Http\Request;
 use stdClass;
 
-abstract class CheckCredentials
+abstract class CheckCredentials extends UseParameters
 {
     /**
      * Handle an incoming request.

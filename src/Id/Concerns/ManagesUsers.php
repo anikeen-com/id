@@ -5,7 +5,6 @@ namespace Anikeen\Id\Concerns;
 
 use Anikeen\Id\ApiOperations\Get;
 use Anikeen\Id\ApiOperations\Post;
-use Anikeen\Id\Exceptions\RequestRequiresClientIdException;
 use Anikeen\Id\Result;
 use Throwable;
 
@@ -52,11 +51,11 @@ trait ManagesUsers
     public function refreshToken(string $storedRefreshToken, string $scope = ''): Result
     {
         return $this->post('../oauth/token', [
-            'grant_type'    => 'refresh_token',
+            'grant_type' => 'refresh_token',
             'refresh_token' => $storedRefreshToken,
-            'client_id'     => $this->clientId,
+            'client_id' => $this->clientId,
             'client_secret' => $this->clientSecret,
-            'scope'         => $scope,
+            'scope' => $scope,
         ]);
     }
 

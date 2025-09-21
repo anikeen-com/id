@@ -3,6 +3,8 @@
 namespace Anikeen\Id\Resources;
 
 use Anikeen\Id\Concerns\HasBillable;
+use Anikeen\Id\Contracts\AppTokenRepository;
+use Anikeen\Id\Exceptions\ResourceException;
 use Throwable;
 
 class Subscriptions extends BaseCollection
@@ -38,16 +40,20 @@ class Subscriptions extends BaseCollection
      */
     public function create(array $attributes): Subscription
     {
-        return (new Subscription(fn() => $this->billable->request('POST', 'v1/subscriptions', $attributes)))
+        return (new Subscription(fn() => $this->billable->anikeenId()
+            ->request('POST', 'v1/subscriptions', $attributes)))
             ->setBillable($this->billable);
     }
 
     /**
      * {@inheritDoc}
+     *
+     * @throws ResourceException
      */
     public function find(string $id): ?Subscription
     {
-        return (new Subscription(fn() => $this->billable->request('GET', sprintf('v1/subscriptions/%s', $id))))
+        return (new Subscription(fn() => $this->billable->anikeenId()
+            ->request('GET', sprintf('v1/subscriptions/%s', $id))))
             ->setBillable($this->billable);
     }
 }

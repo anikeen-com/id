@@ -65,7 +65,8 @@ class Address extends BaseResource
      */
     public function update(array $attributes = []): self
     {
-        return (new self(fn() => $this->billable->request('PUT', sprintf('v1/addresses/%s', $this->id), $attributes)))
+        return (new self(fn() => $this->billable->anikeenId()
+            ->request('PUT', sprintf('v1/addresses/%s', $this->id), $attributes)))
             ->setBillable($this->billable);
     }
 
@@ -76,6 +77,7 @@ class Address extends BaseResource
      */
     public function delete(): bool
     {
-        return $this->billable->request('DELETE', sprintf('v1/addresses/%s', $this->id))->success();
+        return $this->billable->anikeenId()
+            ->request('DELETE', sprintf('v1/addresses/%s', $this->id))->success();
     }
 }

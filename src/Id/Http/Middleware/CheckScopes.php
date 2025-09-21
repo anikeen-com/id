@@ -8,7 +8,7 @@ use Illuminate\Auth\AuthenticationException;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
-class CheckScopes
+class CheckScopes extends UseParameters
 {
     /**
      * Handle the incoming request.

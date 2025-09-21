@@ -2,18 +2,21 @@
 
 namespace Anikeen\Id\Concerns;
 
+use Anikeen\Id\Contracts\Billable;
+use Illuminate\Database\Eloquent\Model;
+
 trait HasBillable
 {
-    public mixed $billable;
+    public Billable|Model $billable;
 
-    public function setBillable(mixed $billable): self
+    public function setBillable(Billable|Model $billable): self
     {
         $this->billable = $billable;
 
         return $this;
     }
 
-    public function getBillable(): mixed
+    public function getBillable(): Billable
     {
         return $this->billable;
     }

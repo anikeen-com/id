@@ -2,15 +2,12 @@
 
 namespace Anikeen\Id\Concerns;
 
-use Anikeen\Id\ApiOperations\Request;
-use Anikeen\Id\Exceptions\RequestRequiresClientIdException;
 use Anikeen\Id\Resources\Transactions;
-use Anikeen\Id\Result;
 use Throwable;
 
 trait ManagesTransactions
 {
-    use Request;
+    use HasBillable;
 
     /**
      * Get transactions from the current user.
@@ -20,7 +17,8 @@ trait ManagesTransactions
     public function transactions(): Transactions
     {
         if (!isset($this->transactionsCache)) {
-            $this->transactionsCache = Transactions::builder(fn() => $this->request('GET', 'v1/transactions'))
+            $this->transactionsCache = Transactions::builder(fn() => $this->anikeenId()
+                ->request('GET', 'v1/transactions'))
                 ->setBillable($this);
         }
 

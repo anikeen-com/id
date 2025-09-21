@@ -2,14 +2,12 @@
 
 namespace Anikeen\Id\Concerns;
 
-use Anikeen\Id\ApiOperations\Request;
-use Anikeen\Id\Exceptions\RequestRequiresClientIdException;
 use Anikeen\Id\Resources\Countries;
 use Throwable;
 
 trait ManagesCountries
 {
-    use Request;
+    use HasBillable;
 
     /**
      * Get available countries for the current user.
@@ -19,7 +17,8 @@ trait ManagesCountries
     public function countries(): Countries
     {
         if (!isset($this->countriesCache)) {
-            $this->countriesCache = Countries::builder(fn() => $this->request('GET', 'v1/countries'))
+            $this->countriesCache = Countries::builder(fn() => $this->anikeenId()
+                ->request('GET', 'v1/countries'))
                 ->setBillable($this);
         }
 

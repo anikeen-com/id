@@ -2,7 +2,6 @@
 
 namespace Anikeen\Id;
 
-use Anikeen\Id\ApiOperations\Request;
 use Anikeen\Id\Concerns\ManagesAddresses;
 use Anikeen\Id\Concerns\ManagesBalance;
 use Anikeen\Id\Concerns\ManagesCountries;
@@ -13,8 +12,6 @@ use Anikeen\Id\Concerns\ManagesProfile;
 use Anikeen\Id\Concerns\ManagesSubscriptions;
 use Anikeen\Id\Concerns\ManagesTaxation;
 use Anikeen\Id\Concerns\ManagesTransactions;
-use Anikeen\Id\Helpers\Paginator;
-use stdClass;
 use Throwable;
 
 trait Billable
@@ -29,31 +26,27 @@ trait Billable
     use ManagesSubscriptions;
     use ManagesTaxation;
     use ManagesTransactions;
-    use Request;
 
     /**
      * Get the currently authenticated user.
      *
      * @throws Throwable
      */
-    public function getUserData(): stdClass
+    public function getUserData(): object
     {
         if (!isset($this->userDataCache)) {
-            $this->userDataCache = $this->request('GET', 'v1/user')->data;
+            $this->userDataCache = $this->anikeenId()->request('GET', 'v1/user')->data;
         }
         return $this->userDataCache;
     }
 
     /**
-     * Make a request to the Anikeen API.
+     * Get the AnikeenId class.
      *
      * @throws Throwable
      */
-    public function request(string $method, string $path, null|array $payload = null, array $parameters = [], ?Paginator $paginator = null): Result
+    public function anikeenId(): AnikeenId
     {
-        $anikeenId = new AnikeenId();
-        $anikeenId->withToken($this->{AnikeenId::getAccessTokenField()});
-
-        return $anikeenId->request($method, $path, $payload, $parameters, $paginator);
+        return app(AnikeenId::class)->withToken($this->{AnikeenId::getAccessTokenField()});
     }
 }
