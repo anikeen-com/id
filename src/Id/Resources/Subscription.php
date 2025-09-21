@@ -70,9 +70,13 @@ class Subscription extends BaseResource
      *
      * @throws Throwable
      */
-    public function revoke(): self
+    public function revoke(bool $refund = false): self
     {
-        return (new self(fn() => $this->billable->request('PUT', sprintf('v1/subscriptions/%s/revoke', $this->id))))
+        $attributes = [
+            'refund' => $refund,
+        ];
+
+        return (new self(fn() => $this->billable->request('PUT', sprintf('v1/subscriptions/%s/revoke', $this->id), $attributes)))
             ->setBillable($this->billable);
     }
 
