@@ -61,6 +61,19 @@ trait ManagesPaymentMethods
     }
 
     /**
+     * Set the default payment method for the current user.
+     *
+     * @throws Throwable
+     * @see \Anikeen\Id\Resources\PaymentMethods::setDefault()
+     */
+    public function setDefaultPaymentMethod(string $id): PaymentMethod
+    {
+        unset($this->paymentMethodsCache);
+
+        return $this->paymentMethods()->setDefault($id);
+    }
+
+    /**
      * Get billing portal URL for the current user.
      *
      * @param string|null $returnUrl The URL to redirect to after the user has finished in the billing portal.

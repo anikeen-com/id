@@ -46,6 +46,20 @@ class PaymentMethods extends BaseCollection
     }
 
     /**
+     * Set the default payment method for the current user.
+     *
+     * @throws Throwable
+     */
+    public function setDefault(string $id): PaymentMethod
+    {
+        unset($this->defaultPaymentMethodCache);
+
+        return (new PaymentMethod(fn() => $this->billable->anikeenId()
+            ->request('PUT', sprintf('v1/payment-methods/%s/default', $id))))
+            ->setBillable($this->billable);
+    }
+
+    /**
      * {@inheritDoc}
      *
      * @throws Throwable
