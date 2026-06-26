@@ -3,6 +3,7 @@
 namespace Anikeen\Id;
 
 use Anikeen\Id\Concerns\ManagesPricing;
+use Anikeen\Id\Concerns\ManagesSocialiteUsers;
 use Anikeen\Id\Concerns\ManagesSshKeys;
 use Anikeen\Id\Concerns\ManagesUsers;
 use Anikeen\Id\Exceptions\RequestRequiresAuthenticationException;
@@ -20,6 +21,7 @@ class AnikeenId
 {
     use OauthTrait;
     use ManagesPricing;
+    use ManagesSocialiteUsers;
     use ManagesSshKeys;
     use ManagesUsers;
 
