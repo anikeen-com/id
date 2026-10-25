@@ -142,6 +142,20 @@ try {
 }
 ```
 
+### App orders (trusted apps, no user token)
+
+Orders that bill the app's subscriptions, read with the app's token (scope `orders:client`):
+
+```php
+$team->owner->appOrders()->pending();         // unpaid orders of one user, oldest first
+app(AnikeenId::class)->appOrders()->pending(); // of all users
+$team->owner->appOrders()->find($orderId);     // null if unknown or not this user's
+```
+
+Each order has `status` (`processing` = current month, still collecting; `pending` = closed and not
+paid; `completed`; `cancelled`), the totals, `payment_attempts`, `next_payment_attempt_at` (null =
+no more automatic retries) and `last_payment_error`.
+
 ### Change the default access token / refresh token field name
 
 If you access / refresh token fields differs from the default `anikeen_id_access_token` / `anikeen_id_refresh_token`, you can specify the field name in the `AppServiceProvider` boot method:
@@ -362,6 +376,7 @@ public function shippingPriceList(): Result
 ### ManagesUserBilling
 
 ```php
+public function appOrders(): AppOrders
 public function createOrderForUser(string $userId, array $attributes): Result
 public function createTransactionForUser(string $userId, array $attributes): Result
 ```
@@ -464,6 +479,7 @@ public function getBillable(): Billable
 ```php
 public function subscriptions(): Subscriptions
 public function appSubscriptions(): AppSubscriptions
+public function appOrders(): AppOrders
 public function setBillable(Billable|Model $billable): self
 public function getBillable(): Billable
 ```

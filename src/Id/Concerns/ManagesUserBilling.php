@@ -2,6 +2,7 @@
 
 namespace Anikeen\Id\Concerns;
 
+use Anikeen\Id\Resources\AppOrders;
 use Anikeen\Id\Result;
 use Throwable;
 
@@ -10,6 +11,14 @@ use Throwable;
  */
 trait ManagesUserBilling
 {
+    /**
+     * Orders of all users that bill the app's subscriptions (e.g. ->pending() for unpaid ones).
+     */
+    public function appOrders(): AppOrders
+    {
+        return new AppOrders();
+    }
+
     /**
      * Create an order for a user (VAT from the billing address). With `checkout`, it is paid right
      * away: with the given `transaction` (a payment captured elsewhere) or by charging the user's
