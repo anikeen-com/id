@@ -93,6 +93,55 @@ class User extends Authenticatable
 
 then, you can use the `Billable` trait methods in your user model.
 
+### App subscriptions (trusted apps, no user token)
+
+`subscriptions()` acts with the user's own access token and stops working when the user's login
+expired. Trusted apps can manage a user's subscriptions with the app's own token (client
+credentials, scope `subscriptions:client`) instead:
+
+```php
+$subscriptions = $team->owner->appSubscriptions(); // nothing is requested yet
+
+$subscription = $subscriptions->create([
+    'group' => $team->id,
+    'name' => 'Cloud Server S',
+    'unit' => 'hour',
+    'price' => 0.0137,
+    'idempotency_key' => "server:{$pendingServer->id}", // retries return the same subscription
+]);
+
+$subscription->checkout();             // bill the first period
+$subscription->pause();                // expires when the paid period ends
+$subscription->resume();               // expired subscriptions start a new period
+$subscription->revoke(refund: false);  // cancel
+
+$subscriptions->find($id);             // null if unknown or not this user's
+$subscriptions->all(['group' => $team->id, 'active' => true]);
+```
+
+The user's Anikeen ID is read from the billable's `anikeen_id` attribute
+(`AnikeenId::useUserIdField('…')` to change it). The app must be trusted by Anikeen ID; it sees the
+subscriptions it created (plus those of clients delegated to it).
+
+Failures throw `Anikeen\Id\Exceptions\ApiException` with `status` (0 = not reachable), a stable
+`error` code (`already_active`, `already_cancelled`, `not_active`, `already_paused`,
+`already_resumed`, `billing_address_missing`, `not_changeable`, `subscription_not_found`,
+`idempotency_key_conflict`) and `isNotFound()`, `isConflict()`, `isTemporary()`:
+
+```php
+try {
+    $subscription->revoke();
+} catch (ApiException $e) {
+    if ($e->isNotFound() || $e->error === 'already_cancelled') {
+        // already gone
+    } elseif ($e->isTemporary()) {
+        // retry later
+    } else {
+        throw $e;
+    }
+}
+```
+
 ### Change the default access token / refresh token field name
 
 If you access / refresh token fields differs from the default `anikeen_id_access_token` / `anikeen_id_refresh_token`, you can specify the field name in the `AppServiceProvider` boot method:
@@ -292,10 +341,41 @@ public function retrievingToken(string $grantType, array $attributes): Result
 public function createOrderPreview(array $attributes = []): Result
 ```
 
+### ManagesProducts
+
+```php
+public function products(): Result
+public function boxes(): Result
+```
+
+### ManagesShippingLabels
+
+```php
+public function shippingLabels(array $parameters = []): Result
+public function shippingLabel(string $id): Result
+public function shippingLabelPdf(string $id): ?string
+public function issueShippingLabel(array $attributes): Result
+public function shipShippingLabel(array $hex): Result
+public function shippingPriceList(): Result
+```
+
+### ManagesUserBilling
+
+```php
+public function createOrderForUser(string $userId, array $attributes): Result
+public function createTransactionForUser(string $userId, array $attributes): Result
+```
+
+### ManagesSocialiteUsers
+
+```php
+public function socialiteUsers(): SocialiteUsers
+```
+
 ### ManagesSshKeys
 
 ```php
-public function sshKeysByUserId(string $sskKeyId): SshKeys
+public function sshKeysByUserId(string $userId): SshKeys
 ```
 
 ### ManagesUsers
@@ -303,8 +383,10 @@ public function sshKeysByUserId(string $sskKeyId): SshKeys
 ```php
 public function getAuthedUser(): Result
 public function createUser(array $attributes): Result
+public function findOrCreateSocialiteUser(string $provider, string $providerId, ?string $email = null, ?string $name = null): Result
+public function refreshToken(string $storedRefreshToken, string $scope = ''): Result
 public function isEmailExisting(string $email): Result
-public function setParent(?mixed $parent): self
+public function setParent(mixed $parent): self
 public function getParent()
 ```
 
@@ -316,6 +398,8 @@ public function getParent()
 ```php
 public function addresses(): Addresses
 public function hasDefaultBillingAddress(): bool
+public function setBillable(Billable|Model $billable): self
+public function getBillable(): Billable
 ```
 
 ### ManagesBalance
@@ -323,25 +407,34 @@ public function hasDefaultBillingAddress(): bool
 ```php
 public function balance(): float
 public function charges(): float
-public function charge(float $amount, string $paymentMethodId, array $options = []): Transaction
+public function billingOverview(): object
+public function charge(string|float $amount, string $paymentMethodId, array $options = []): Transaction
+public function setBillable(Billable|Model $billable): self
+public function getBillable(): Billable
 ```
 
 ### ManagesCountries
 
 ```php
 public function countries(): Countries
+public function setBillable(Billable|Model $billable): self
+public function getBillable(): Billable
 ```
 
 ### ManagesInvoices
 
 ```php
 public function invoices(array $parameters = []): Invoices
+public function setBillable(Billable|Model $billable): self
+public function getBillable(): Billable
 ```
 
 ### ManagesOrders
 
 ```php
 public function orders(array $parameters = []): Orders
+public function setBillable(Billable|Model $billable): self
+public function getBillable(): Billable
 ```
 
 ### ManagesPaymentMethods
@@ -351,32 +444,52 @@ public function paymentMethods(): PaymentMethods
 public function hasPaymentMethod(): ?PaymentMethod
 public function defaultPaymentMethod(): ?PaymentMethod
 public function hasDefaultPaymentMethod(): bool
+public function setDefaultPaymentMethod(string $id): PaymentMethod
 public function billingPortalUrl(?string $returnUrl = null, array $options = []): string
 public function createSetupIntent(array $options = []): Result
+public function setBillable(Billable|Model $billable): self
+public function getBillable(): Billable
 ```
 
 ### ManagesProfile
 
 ```php
 public function profilePortalUrl(?string $returnUrl = null, array $options = []): string
+public function setBillable(Billable|Model $billable): self
+public function getBillable(): Billable
 ```
 
 ### ManagesSubscriptions
 
 ```php
 public function subscriptions(): Subscriptions
+public function appSubscriptions(): AppSubscriptions
+public function setBillable(Billable|Model $billable): self
+public function getBillable(): Billable
 ```
 
 ### ManagesTaxation
 
 ```php
-public function vat(): float
+public function vatRate(): float
+public function setBillable(Billable|Model $billable): self
+public function getBillable(): Billable
 ```
 
 ### ManagesTransactions
 
 ```php
 public function transactions(): Transactions
+public function setBillable(Billable|Model $billable): self
+public function getBillable(): Billable
+```
+
+### ManagesUserSshKeys
+
+```php
+public function sshKeys(): SshKeys
+public function setBillable(Billable|Model $billable): self
+public function getBillable(): Billable
 ```
 
 

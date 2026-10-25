@@ -3,8 +3,11 @@
 namespace Anikeen\Id;
 
 use Anikeen\Id\Concerns\ManagesPricing;
+use Anikeen\Id\Concerns\ManagesProducts;
+use Anikeen\Id\Concerns\ManagesShippingLabels;
 use Anikeen\Id\Concerns\ManagesSocialiteUsers;
 use Anikeen\Id\Concerns\ManagesSshKeys;
+use Anikeen\Id\Concerns\ManagesUserBilling;
 use Anikeen\Id\Concerns\ManagesUsers;
 use Anikeen\Id\Exceptions\RequestRequiresAuthenticationException;
 use Anikeen\Id\Exceptions\RequestRequiresClientIdException;
@@ -21,6 +24,9 @@ class AnikeenId
 {
     use OauthTrait;
     use ManagesPricing;
+    use ManagesProducts;
+    use ManagesShippingLabels;
+    use ManagesUserBilling;
     use ManagesSocialiteUsers;
     use ManagesSshKeys;
     use ManagesUsers;
@@ -57,6 +63,8 @@ class AnikeenId
      * The key for the access token.
      */
     private static string $refreshTokenField = 'anikeen_id_refresh_token';
+
+    private static string $userIdField = 'anikeen_id';
 
     /**
      * Guzzle is used to make http requests.
@@ -141,6 +149,41 @@ class AnikeenId
     public static function getAccessTokenField(): string
     {
         return self::$accessTokenField;
+    }
+
+    /**
+     * Attribute of the billable model that holds the user's Anikeen ID (used by app requests,
+     * e.g. appSubscriptions(), which act on behalf of a user without the user's token).
+     */
+    public static function useUserIdField(string $userIdField): void
+    {
+        self::$userIdField = $userIdField;
+    }
+
+    public static function getUserIdField(): string
+    {
+        return self::$userIdField;
+    }
+
+    /**
+     * A copy that uses the app's own access token (client credentials) instead of a user's token.
+     * The shared instance keeps its token, so app rights never leak into other requests.
+     *
+     * @throws Exceptions\RequestFreshAccessTokenException
+     */
+    public function asApp(): static
+    {
+        return (clone $this)->withToken(app(Contracts\AppTokenRepository::class)->getAccessToken());
+    }
+
+    /**
+     * Replace the HTTP client, e.g. with one using a Guzzle MockHandler in tests.
+     */
+    public function setHttpClient(Client $client): static
+    {
+        $this->client = $client;
+
+        return $this;
     }
 
     public static function getMode(): string
@@ -361,7 +404,8 @@ class AnikeenId
             'Client-ID' => $this->getClientId(),
             'Accept' => 'application/json',
         ];
-        if ($bearerToken = $useClientSecret ? $this->getClientSecret() : $this->getToken()) {
+        // public endpoints (products, order preview, …) work without a token
+        if ($bearerToken = $useClientSecret ? $this->getClientSecret() : $this->token) {
             $headers['Authorization'] = 'Bearer ' . $bearerToken;
         }
         if ($json) {

@@ -12,6 +12,7 @@ use Anikeen\Id\Concerns\ManagesProfile;
 use Anikeen\Id\Concerns\ManagesSubscriptions;
 use Anikeen\Id\Concerns\ManagesTaxation;
 use Anikeen\Id\Concerns\ManagesTransactions;
+use Anikeen\Id\Concerns\ManagesUserSshKeys;
 use Throwable;
 
 trait Billable
@@ -26,6 +27,7 @@ trait Billable
     use ManagesSubscriptions;
     use ManagesTaxation;
     use ManagesTransactions;
+    use ManagesUserSshKeys;
 
     /**
      * Get the currently authenticated user.

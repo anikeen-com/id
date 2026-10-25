@@ -17,8 +17,18 @@ class SshKey extends BaseResource
      *
      * @throws Throwable
      */
+    /**
+     * Rename the SSH key.
+     *
+     * @throws Throwable
+     */
+    public function update(string $name): self
+    {
+        return (new self(fn() => $this->parent->put(sprintf('v1/ssh-keys/%s', $this->id), ['name' => $name])))->setParent($this->parent);
+    }
+
     public function delete(): bool
     {
         return $this->parent->delete(sprintf('v1/ssh-keys/%s', $this->id))->success();
     }
-}
+}

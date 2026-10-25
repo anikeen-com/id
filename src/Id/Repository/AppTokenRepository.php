@@ -33,6 +33,14 @@ class AppTokenRepository implements Repository
     }
 
     /**
+     * Drop the cached token, e.g. after the ID service rejected it.
+     */
+    public function forgetAccessToken(): void
+    {
+        Cache::forget(self::ACCESS_TOKEN_CACHE_KEY);
+    }
+
+    /**
      * @throws RequestFreshAccessTokenException
      */
     private function requestFreshAccessToken(string $scope): mixed
