@@ -76,6 +76,17 @@ class AppSubscriptionsTest extends TestCase
         $this->assertSame(['refund' => true], $this->sentJson(4));
     }
 
+    public function test_a_running_service_is_checked_out_from_its_start(): void
+    {
+        $this->respond(201, $this->subscription());
+        $this->respond(200, $this->subscription(['active' => true]));
+
+        $subscription = $this->owner()->appSubscriptions()->create(['name' => '.de TLD', 'unit' => 'year', 'price' => '5.19']);
+        $subscription->checkout(new \DateTimeImmutable('2026-05-19 11:33:58', new \DateTimeZone('UTC')));
+
+        $this->assertSame(['starts_at' => '2026-05-19T11:33:58+00:00'], $this->sentJson(1));
+    }
+
     public function test_errors_carry_status_and_error_code(): void
     {
         $this->respond(409, ['message' => 'Product subscription has already been cancelled.', 'error' => 'already_cancelled']);
