@@ -2,6 +2,7 @@
 
 namespace Anikeen\Id\Concerns;
 
+use Anikeen\Id\Resources\AppOrders;
 use Anikeen\Id\Resources\AppSubscriptions;
 use Anikeen\Id\Resources\Subscriptions;
 use Throwable;
@@ -34,5 +35,14 @@ trait ManagesSubscriptions
     public function appSubscriptions(): AppSubscriptions
     {
         return new AppSubscriptions($this);
+    }
+
+    /**
+     * The user's orders that bill the app's subscriptions, read with the app's own token
+     * (trusted apps only, scope orders:client), e.g. ->pending() for unpaid ones.
+     */
+    public function appOrders(): AppOrders
+    {
+        return new AppOrders($this);
     }
 }
