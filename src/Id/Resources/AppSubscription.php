@@ -4,6 +4,7 @@ namespace Anikeen\Id\Resources;
 
 use Anikeen\Id\Exceptions\ApiException;
 use Anikeen\Id\Support\AppRequest;
+use DateTimeInterface;
 use JsonSerializable;
 
 /**
@@ -58,11 +59,18 @@ class AppSubscription implements JsonSerializable
     /**
      * Activate the subscription and bill its first period.
      *
-     * @throws ApiException 409 "already_active", "billing_address_missing", …
+     * $startsAt (in the past) books a service that is already running, e.g. a domain registered
+     * earlier: the first period runs from $startsAt, is billed now and renews when it ends.
+     *
+     * @throws ApiException 409 "already_active", "billing_address_missing", "period_already_ended", …
      */
-    public function checkout(): self
+    public function checkout(DateTimeInterface|string|null $startsAt = null): self
     {
-        return $this->send('PUT', '/checkout');
+        if ($startsAt instanceof DateTimeInterface) {
+            $startsAt = $startsAt->format(DateTimeInterface::ATOM);
+        }
+
+        return $this->send('PUT', '/checkout', $startsAt === null ? null : ['starts_at' => $startsAt]);
     }
 
     /**

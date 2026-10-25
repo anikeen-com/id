@@ -111,6 +111,7 @@ $subscription = $subscriptions->create([
 ]);
 
 $subscription->checkout();             // bill the first period
+$subscription->checkout(startsAt: $domain->registered_at); // already running: bill the period that started then
 $subscription->pause();                // expires when the paid period ends
 $subscription->resume();               // expired subscriptions start a new period
 $subscription->revoke(refund: false);  // cancel
