@@ -17,11 +17,11 @@ class Invoice extends BaseResource
      *
      * @throws Throwable
      */
-    public function getInvoiceTemporaryUrl(): string
+    public function getInvoiceTemporaryUrl(): ?string
     {
         return $this->billable->anikeenId()
-            ->request('PUT', sprintf('v1/invoices/%s', $this->id))
+            ->request('GET', sprintf('v1/invoices/%s', $this->id))
             ->data
-            ->temporary_url;
+            ->temporary_url ?? null;
     }
-}
+}

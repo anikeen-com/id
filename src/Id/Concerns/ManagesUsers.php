@@ -42,7 +42,36 @@ trait ManagesUsers
      */
     public function createUser(array $attributes): Result
     {
-        return $this->post('v1/users', $attributes);
+        // the API takes a single display name
+        if (!isset($attributes['name']) && (isset($attributes['first_name']) || isset($attributes['last_name']))) {
+            $attributes['name'] = trim(($attributes['first_name'] ?? '') . ' ' . ($attributes['last_name'] ?? '')) ?: null;
+        }
+
+        if (isset($attributes['password']) && !isset($attributes['password_confirmation'])) {
+            $attributes['password_confirmation'] = $attributes['password'];
+        }
+
+        unset($attributes['first_name'], $attributes['last_name']);
+
+        // finds the user by email or creates it (trusted apps, app token)
+        return $this->asApp()->post('v1/admin/users', $attributes);
+    }
+
+    /**
+     * Find the user of a social login or create it (trusted apps, app token).
+     *
+     * @param string $provider The socialite driver, e.g. "twitch".
+     * @param string $providerId The user's ID at the provider.
+     * @throws Throwable
+     */
+    public function findOrCreateSocialiteUser(string $provider, string $providerId, ?string $email = null, ?string $name = null): Result
+    {
+        return $this->asApp()->post('v1/admin/users/socialite', array_filter([
+            'provider' => $provider,
+            'provider_id' => $providerId,
+            'email' => $email,
+            'name' => $name,
+        ], fn ($value) => $value !== null));
     }
 
     /**
@@ -67,7 +96,8 @@ trait ManagesUsers
      */
     public function isEmailExisting(string $email): Result
     {
-        return $this->post('v1/users/check', [
+        // `data.exists` tells whether an account uses the email (trusted apps, app token)
+        return $this->asApp()->post('v1/admin/users/check', [
             'email' => $email,
         ]);
     }

@@ -28,12 +28,19 @@ class OrderItems extends BaseCollection
      *      }>
      *  } $attributes The order data:
      *    - items:           Array of order items, each with type, name, description, price, unit, and quantity
+     *
+     * Only trusted apps may add items, and only to draft orders. Returns the first created item.
+     *
      * @throws Throwable
      */
     public function create(string $orderId, array $attributes = []): OrderItem
     {
-        return (new OrderItem(fn() => $this->billable->anikeenId()
-            ->request('POST', sprintf('v1/orders/%s', $orderId), $attributes)))
+        return (new OrderItem(fn() => tap($this->billable->anikeenId()
+            ->request('POST', sprintf('v1/orders/%s/items', $orderId), $attributes), function ($result) {
+                if (is_array($result->data)) {
+                    $result->data = $result->data[0] ?? null;
+                }
+            })))
             ->setBillable($this->billable)
             ->setParent($this->parent);
     }
@@ -48,4 +55,4 @@ class OrderItems extends BaseCollection
             ->setBillable($this->billable)
             ->setParent($this->parent);
     }
-}
+}

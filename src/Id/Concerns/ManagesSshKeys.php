@@ -12,17 +12,16 @@ trait ManagesSshKeys
     use Get;
 
     /**
-     * Get currently authed user with Bearer Token.
+     * SSH keys of a user, read with the app's own token (trusted apps, scope ssh-keys:read),
+     * e.g. to install them on a new server.
      *
      * @throws Throwable
      */
-    public function sshKeysByUserId(string $sskKeyId): SshKeys
+    public function sshKeysByUserId(string $userId): SshKeys
     {
-        if (!isset($this->sshKeysCache)) {
-            $this->sshKeysCache = SshKeys::builder(fn() => $this->get(sprintf('v1/users/%s/ssh-keys/json', $sskKeyId)))
-                ->setParent($this);
-        }
+        $app = $this->asApp();
 
-        return $this->sshKeysCache;
+        return SshKeys::builder(fn() => $app->get(sprintf('v1/client/users/%s/ssh-keys', $userId)))
+            ->setParent($app);
     }
 }

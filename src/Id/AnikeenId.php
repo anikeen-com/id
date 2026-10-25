@@ -3,8 +3,11 @@
 namespace Anikeen\Id;
 
 use Anikeen\Id\Concerns\ManagesPricing;
+use Anikeen\Id\Concerns\ManagesProducts;
+use Anikeen\Id\Concerns\ManagesShippingLabels;
 use Anikeen\Id\Concerns\ManagesSocialiteUsers;
 use Anikeen\Id\Concerns\ManagesSshKeys;
+use Anikeen\Id\Concerns\ManagesUserBilling;
 use Anikeen\Id\Concerns\ManagesUsers;
 use Anikeen\Id\Exceptions\RequestRequiresAuthenticationException;
 use Anikeen\Id\Exceptions\RequestRequiresClientIdException;
@@ -21,6 +24,9 @@ class AnikeenId
 {
     use OauthTrait;
     use ManagesPricing;
+    use ManagesProducts;
+    use ManagesShippingLabels;
+    use ManagesUserBilling;
     use ManagesSocialiteUsers;
     use ManagesSshKeys;
     use ManagesUsers;
@@ -398,7 +404,8 @@ class AnikeenId
             'Client-ID' => $this->getClientId(),
             'Accept' => 'application/json',
         ];
-        if ($bearerToken = $useClientSecret ? $this->getClientSecret() : $this->getToken()) {
+        // public endpoints (products, order preview, …) work without a token
+        if ($bearerToken = $useClientSecret ? $this->getClientSecret() : $this->token) {
             $headers['Authorization'] = 'Bearer ' . $bearerToken;
         }
         if ($json) {

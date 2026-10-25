@@ -32,6 +32,12 @@ trait ManagesPricing
      */
     public function createOrderPreview(array $attributes = []): Result
     {
+        // the API expects the country as part of the billing address
+        if (isset($attributes['country_iso']) && !isset($attributes['billing_address'])) {
+            $attributes['billing_address'] = ['country_iso' => $attributes['country_iso']];
+            unset($attributes['country_iso']);
+        }
+
         return $this->post('v1/orders/preview', $attributes);
     }
-}
+}

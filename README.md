@@ -341,10 +341,41 @@ public function retrievingToken(string $grantType, array $attributes): Result
 public function createOrderPreview(array $attributes = []): Result
 ```
 
+### ManagesProducts
+
+```php
+public function products(): Result
+public function boxes(): Result
+```
+
+### ManagesShippingLabels
+
+```php
+public function shippingLabels(array $parameters = []): Result
+public function shippingLabel(string $id): Result
+public function shippingLabelPdf(string $id): ?string
+public function issueShippingLabel(array $attributes): Result
+public function shipShippingLabel(array $hex): Result
+public function shippingPriceList(): Result
+```
+
+### ManagesUserBilling
+
+```php
+public function createOrderForUser(string $userId, array $attributes): Result
+public function createTransactionForUser(string $userId, array $attributes): Result
+```
+
+### ManagesSocialiteUsers
+
+```php
+public function socialiteUsers(): SocialiteUsers
+```
+
 ### ManagesSshKeys
 
 ```php
-public function sshKeysByUserId(string $sskKeyId): SshKeys
+public function sshKeysByUserId(string $userId): SshKeys
 ```
 
 ### ManagesUsers
@@ -352,8 +383,10 @@ public function sshKeysByUserId(string $sskKeyId): SshKeys
 ```php
 public function getAuthedUser(): Result
 public function createUser(array $attributes): Result
+public function findOrCreateSocialiteUser(string $provider, string $providerId, ?string $email = null, ?string $name = null): Result
+public function refreshToken(string $storedRefreshToken, string $scope = ''): Result
 public function isEmailExisting(string $email): Result
-public function setParent(?mixed $parent): self
+public function setParent(mixed $parent): self
 public function getParent()
 ```
 
@@ -365,6 +398,8 @@ public function getParent()
 ```php
 public function addresses(): Addresses
 public function hasDefaultBillingAddress(): bool
+public function setBillable(Billable|Model $billable): self
+public function getBillable(): Billable
 ```
 
 ### ManagesBalance
@@ -372,25 +407,34 @@ public function hasDefaultBillingAddress(): bool
 ```php
 public function balance(): float
 public function charges(): float
-public function charge(float $amount, string $paymentMethodId, array $options = []): Transaction
+public function billingOverview(): object
+public function charge(string|float $amount, string $paymentMethodId, array $options = []): Transaction
+public function setBillable(Billable|Model $billable): self
+public function getBillable(): Billable
 ```
 
 ### ManagesCountries
 
 ```php
 public function countries(): Countries
+public function setBillable(Billable|Model $billable): self
+public function getBillable(): Billable
 ```
 
 ### ManagesInvoices
 
 ```php
 public function invoices(array $parameters = []): Invoices
+public function setBillable(Billable|Model $billable): self
+public function getBillable(): Billable
 ```
 
 ### ManagesOrders
 
 ```php
 public function orders(array $parameters = []): Orders
+public function setBillable(Billable|Model $billable): self
+public function getBillable(): Billable
 ```
 
 ### ManagesPaymentMethods
@@ -400,32 +444,52 @@ public function paymentMethods(): PaymentMethods
 public function hasPaymentMethod(): ?PaymentMethod
 public function defaultPaymentMethod(): ?PaymentMethod
 public function hasDefaultPaymentMethod(): bool
+public function setDefaultPaymentMethod(string $id): PaymentMethod
 public function billingPortalUrl(?string $returnUrl = null, array $options = []): string
 public function createSetupIntent(array $options = []): Result
+public function setBillable(Billable|Model $billable): self
+public function getBillable(): Billable
 ```
 
 ### ManagesProfile
 
 ```php
 public function profilePortalUrl(?string $returnUrl = null, array $options = []): string
+public function setBillable(Billable|Model $billable): self
+public function getBillable(): Billable
 ```
 
 ### ManagesSubscriptions
 
 ```php
 public function subscriptions(): Subscriptions
+public function appSubscriptions(): AppSubscriptions
+public function setBillable(Billable|Model $billable): self
+public function getBillable(): Billable
 ```
 
 ### ManagesTaxation
 
 ```php
-public function vat(): float
+public function vatRate(): float
+public function setBillable(Billable|Model $billable): self
+public function getBillable(): Billable
 ```
 
 ### ManagesTransactions
 
 ```php
 public function transactions(): Transactions
+public function setBillable(Billable|Model $billable): self
+public function getBillable(): Billable
+```
+
+### ManagesUserSshKeys
+
+```php
+public function sshKeys(): SshKeys
+public function setBillable(Billable|Model $billable): self
+public function getBillable(): Billable
 ```
 
 

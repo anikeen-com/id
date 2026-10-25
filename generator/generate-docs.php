@@ -7,6 +7,20 @@ use Anikeen\Id\Billable;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 
+// short type name incl. union, intersection and nullable types
+function typeName(ReflectionType $type): string
+{
+    if ($type instanceof ReflectionUnionType || $type instanceof ReflectionIntersectionType) {
+        $separator = $type instanceof ReflectionUnionType ? '|' : '&';
+
+        return collect($type->getTypes())->map(fn (ReflectionType $t) => typeName($t))->implode($separator);
+    }
+
+    $name = Arr::last(explode('\\', $type->getName()));
+
+    return ($type->allowsNull() && !in_array($name, ['mixed', 'null'], true) ? '?' : '') . $name;
+}
+
 // Liste der Klassen, die ausgewertet werden sollen
 $classes = [
     AnikeenId::class,
@@ -51,10 +65,7 @@ $allMarkdown = collect($classes)
                                 // Typ-Hint
                                 $typeHint = '';
                                 if ($p->hasType()) {
-                                    $type = $p->getType();
-                                    $nullable = $type->allowsNull() ? '?' : '';
-                                    $name     = Arr::last(explode('\\', $type->getName()));
-                                    $typeHint = $nullable . $name . ' ';
+                                    $typeHint = typeName($p->getType()) . ' ';
                                 }
 
                                 // Parameter-Name
@@ -84,10 +95,7 @@ $allMarkdown = collect($classes)
 
                         // Rückgabetyp, falls vorhanden
                         if ($method->hasReturnType()) {
-                            $retType  = $method->getReturnType();
-                            $nullable = $retType->allowsNull() ? '?' : '';
-                            $typeName = Arr::last(explode('\\', $retType->getName()));
-                            $decl    .= ': ' . $nullable . $typeName;
+                            $decl    .= ': ' . typeName($method->getReturnType());
                         }
 
                         return $decl;

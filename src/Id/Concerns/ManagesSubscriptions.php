@@ -35,4 +35,4 @@ trait ManagesSubscriptions
     {
         return new AppSubscriptions($this);
     }
-}
+}

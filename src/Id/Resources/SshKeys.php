@@ -29,6 +29,6 @@ class SshKeys extends BaseCollection
      */
     public function find(string $id): ?SshKey
     {
-        return (new SshKey(fn() => $this->parent->get(sprintf('v1/ssh-keys/%s', $id))));
+        return (new SshKey(fn() => $this->parent->get(sprintf('v1/ssh-keys/%s', $id))))->setParent($this->parent);
     }
-}
+}
