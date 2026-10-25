@@ -58,6 +58,8 @@ class AnikeenId
      */
     private static string $refreshTokenField = 'anikeen_id_refresh_token';
 
+    private static string $userIdField = 'anikeen_id';
+
     /**
      * Guzzle is used to make http requests.
      */
@@ -141,6 +143,41 @@ class AnikeenId
     public static function getAccessTokenField(): string
     {
         return self::$accessTokenField;
+    }
+
+    /**
+     * Attribute of the billable model that holds the user's Anikeen ID (used by app requests,
+     * e.g. appSubscriptions(), which act on behalf of a user without the user's token).
+     */
+    public static function useUserIdField(string $userIdField): void
+    {
+        self::$userIdField = $userIdField;
+    }
+
+    public static function getUserIdField(): string
+    {
+        return self::$userIdField;
+    }
+
+    /**
+     * A copy that uses the app's own access token (client credentials) instead of a user's token.
+     * The shared instance keeps its token, so app rights never leak into other requests.
+     *
+     * @throws Exceptions\RequestFreshAccessTokenException
+     */
+    public function asApp(): static
+    {
+        return (clone $this)->withToken(app(Contracts\AppTokenRepository::class)->getAccessToken());
+    }
+
+    /**
+     * Replace the HTTP client, e.g. with one using a Guzzle MockHandler in tests.
+     */
+    public function setHttpClient(Client $client): static
+    {
+        $this->client = $client;
+
+        return $this;
     }
 
     public static function getMode(): string

@@ -93,6 +93,55 @@ class User extends Authenticatable
 
 then, you can use the `Billable` trait methods in your user model.
 
+### App subscriptions (trusted apps, no user token)
+
+`subscriptions()` acts with the user's own access token and stops working when the user's login
+expired. Trusted apps can manage a user's subscriptions with the app's own token (client
+credentials, scope `subscriptions:client`) instead:
+
+```php
+$subscriptions = $team->owner->appSubscriptions(); // nothing is requested yet
+
+$subscription = $subscriptions->create([
+    'group' => $team->id,
+    'name' => 'Cloud Server S',
+    'unit' => 'hour',
+    'price' => 0.0137,
+    'idempotency_key' => "server:{$pendingServer->id}", // retries return the same subscription
+]);
+
+$subscription->checkout();             // bill the first period
+$subscription->pause();                // expires when the paid period ends
+$subscription->resume();               // expired subscriptions start a new period
+$subscription->revoke(refund: false);  // cancel
+
+$subscriptions->find($id);             // null if unknown or not this user's
+$subscriptions->all(['group' => $team->id, 'active' => true]);
+```
+
+The user's Anikeen ID is read from the billable's `anikeen_id` attribute
+(`AnikeenId::useUserIdField('…')` to change it). The app must be trusted by Anikeen ID; it sees the
+subscriptions it created (plus those of clients delegated to it).
+
+Failures throw `Anikeen\Id\Exceptions\ApiException` with `status` (0 = not reachable), a stable
+`error` code (`already_active`, `already_cancelled`, `not_active`, `already_paused`,
+`already_resumed`, `billing_address_missing`, `not_changeable`, `subscription_not_found`,
+`idempotency_key_conflict`) and `isNotFound()`, `isConflict()`, `isTemporary()`:
+
+```php
+try {
+    $subscription->revoke();
+} catch (ApiException $e) {
+    if ($e->isNotFound() || $e->error === 'already_cancelled') {
+        // already gone
+    } elseif ($e->isTemporary()) {
+        // retry later
+    } else {
+        throw $e;
+    }
+}
+```
+
 ### Change the default access token / refresh token field name
 
 If you access / refresh token fields differs from the default `anikeen_id_access_token` / `anikeen_id_refresh_token`, you can specify the field name in the `AppServiceProvider` boot method:

@@ -2,6 +2,7 @@
 
 namespace Anikeen\Id\Concerns;
 
+use Anikeen\Id\Resources\AppSubscriptions;
 use Anikeen\Id\Resources\Subscriptions;
 use Throwable;
 
@@ -23,5 +24,15 @@ trait ManagesSubscriptions
         }
 
         return $this->subscriptionsCache;
+    }
+
+    /**
+     * The user's subscriptions, managed with the app's own token instead of the user's
+     * (trusted apps only, scope subscriptions:client). Use this in jobs and anywhere the user's
+     * login may have expired.
+     */
+    public function appSubscriptions(): AppSubscriptions
+    {
+        return new AppSubscriptions($this);
     }
 }
