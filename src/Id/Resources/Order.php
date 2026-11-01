@@ -42,13 +42,13 @@ class Order extends BaseResource
      *      },
      *      shipping_address: null|array{
      *           company_name: null|string,
-     *           first_name:  string,
+     *           first_name: string,
      *           last_name: string,
-     *           address: null|string,
-     *           address_2: string,
+     *           address: string,
+     *           address_2: null|string,
      *           house_number: null|string,
      *           city: string,
-     *           state: string,
+     *           state: null|string,
      *           postal_code: string,
      *           country_iso: string,
      *           phone_number: null|string,
@@ -56,7 +56,7 @@ class Order extends BaseResource
      *      }
      *  } $attributes The order data:
      *    - billing_address:  Billing address (ISO 3166-1 alpha-2 country code)
-     *    - shipping_address: Shipping address (first name, last name, ISO 3166-1 alpha-2 country code)
+     *    - shipping_address: Shipping address for physical items (first name, last name, address, postal code, city, ISO 3166-1 alpha-2 country code)
      * @throws Throwable
      */
     public function update(array $attributes = []): self

@@ -31,7 +31,7 @@ trait ManagesUserBilling
      *     billing_address?: array,
      *     shipping_address_id?: string,
      *     shipping_address?: array,
-     *     items: array<array{type: string, name: string, description?: string, price?: float|string, gross_price?: float|string, unit: string, units: int}>,
+     *     items: array<array{type: string, name: string, description?: string, image_url?: string, price?: float|string, gross_price?: float|string, unit: string, units: int}>,
      *     checkout?: bool,
      *     transaction_id?: string,
      *     transaction?: array,
