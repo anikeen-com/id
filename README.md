@@ -197,7 +197,8 @@ $order = $user->orders()->create([
 ```
 
 Once a paid order is sent, create a shipment. Anikeen ID adds its delivery note to the user's
-order documents (with the tracking link) and sends `order.shipped` to your webhook endpoints.
+order documents (with the tracking link), mails it to the user (`'notify_customer' => false` if
+your shop sends its own mail) and sends `order.shipped` to your webhook endpoints.
 Without `items`, everything physical that is left is shipped; partial deliveries name the items:
 
 ```php
