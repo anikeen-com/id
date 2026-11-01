@@ -157,6 +157,32 @@ Each order has `status` (`processing` = current month, still collecting; `pendin
 paid; `completed`; `cancelled`), the totals, `payment_attempts`, `next_payment_attempt_at` (null =
 no more automatic retries) and `last_payment_error`.
 
+### Selling as a third-party app (user confirms on Anikeen ID)
+
+Apps that are not trusted can create orders and subscriptions for the signed-in user (user token),
+but can't charge them. The user confirms on Anikeen ID and comes back to your `return_url`:
+
+```php
+use Anikeen\Id\Exceptions\ConfirmationRequiredException;
+
+$order = $user->orders()->create([
+    'billing_address_id' => $addressId,
+    'items' => [['type' => 'digital', 'name' => 'Sticker pack', 'unit' => 'piece', 'units' => 1, 'gross_price' => '9.99']],
+]);
+
+return redirect($order->confirmationUrl(route('shop.done')));
+// later: https://your-app.test/shop/done?status=completed&order=01J…
+```
+
+`return_url` must have the origin of one of your app's redirect URIs. `status` is `completed`,
+`pending` (payment still processing) or `cancelled`; check it with `$user->orders()->find($id)`
+instead of trusting the query string. Subscriptions work the same way
+(`$user->subscriptions()->create([...])->confirmationUrl(...)`, `&subscription=…`).
+Unconfirmed bookings are cancelled after 24 hours.
+
+`checkout()` on such a draft throws `ConfirmationRequiredException`; its `confirmationUrl`
+points to the same page. Trusted apps keep checking out directly.
+
 ### Change the default access token / refresh token field name
 
 If you access / refresh token fields differs from the default `anikeen_id_access_token` / `anikeen_id_refresh_token`, you can specify the field name in the `AppServiceProvider` boot method:

@@ -3,14 +3,17 @@
 namespace Anikeen\Id\Resources;
 
 use Anikeen\Id\Concerns\HasBillable;
+use Anikeen\Id\Concerns\HasConfirmationUrl;
 use Throwable;
 
 /**
  * @property string $id
+ * @property null|string $confirmation_url where the user confirms it (third-party apps)
  */
 class Order extends BaseResource
 {
     use HasBillable;
+    use HasConfirmationUrl;
 
     /**
      * Update given order from the current user.

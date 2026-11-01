@@ -2,6 +2,7 @@
 
 namespace Anikeen\Id\Resources;
 
+use Anikeen\Id\Exceptions\ConfirmationRequiredException;
 use Anikeen\Id\Exceptions\ResourceException;
 use Anikeen\Id\Result;
 use JsonSerializable;
@@ -19,6 +20,14 @@ abstract class BaseResource implements JsonSerializable
         $this->result = $callable();
 
         if (!$this->result->success()) {
+            if (($this->result->data->error ?? null) === 'confirmation_required') {
+                throw new ConfirmationRequiredException(
+                    $this->result->data->message ?? 'The user has to confirm this on Anikeen ID.',
+                    $this->result->response->getStatusCode(),
+                    $this->result->data->confirmation_url ?? null,
+                );
+            }
+
             throw new ResourceException(sprintf('%s for resource [%s]', rtrim($this->result->data->message, '.'), get_called_class()), $this->result->response->getStatusCode());
         }
 
