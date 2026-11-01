@@ -47,7 +47,9 @@ class AppSubscription implements JsonSerializable
     }
 
     /**
-     * Change a subscription that wasn't checked out yet.
+     * Change a subscription (send only what changes). Before checkout everything can change;
+     * afterwards only the description, which names what the customer pays for and is shown
+     * on their bills, e.g. `$subscription->update(['description' => 'web-01.example.com'])`.
      *
      * @throws ApiException
      */
