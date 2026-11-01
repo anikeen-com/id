@@ -47,8 +47,6 @@ class AppSubscriptions
      *     vat_rate?: float,
      *     payload?: null|array,
      *     ends_at?: null|string,
-     *     webhook_url?: null|string,
-     *     webhook_secret?: null|string,
      *     idempotency_key?: null|string
      * } $attributes With an idempotency_key (max. 191 characters), a retried call returns the
      *               subscription created by the first one instead of a duplicate.
