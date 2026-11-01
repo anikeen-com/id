@@ -27,11 +27,14 @@ class Shipments extends BaseCollection
      *     tracking_url?: string,
      *     note?: string,
      *     shipped_at?: string,
+     *     notify_customer?: bool,
      *     items?: array<array{order_item_id: string, units?: float|int|string}>
      * } $attributes
      *   - carrier:         e.g. "DHL"
      *   - tracking_url:    http(s) link to track the parcel, shown to the user
      *   - shipped_at:      when it was sent (default: now, not in the future)
+     *   - notify_customer: Anikeen ID mails the user with the delivery note (default true);
+     *                      false if your shop sends its own mail
      *   - items:           physical items of the order and how many of them (default: all left)
      *
      * Errors (ResourceException with the HTTP status): 409 when the order isn't paid or nothing
