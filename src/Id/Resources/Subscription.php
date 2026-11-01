@@ -3,6 +3,7 @@
 namespace Anikeen\Id\Resources;
 
 use Anikeen\Id\Concerns\HasBillable;
+use Anikeen\Id\Concerns\HasConfirmationUrl;
 use Anikeen\Id\Contracts\AppTokenRepository;
 use Throwable;
 
@@ -17,10 +18,12 @@ use Throwable;
  * @property string $ends_at
  * @property string $webhook_url
  * @property string $webhook_secret
+ * @property null|string $confirmation_url where the user confirms it (third-party apps)
  */
 class Subscription extends BaseResource
 {
     use HasBillable;
+    use HasConfirmationUrl;
 
     /**
      * Update a given subscription from the current user.
