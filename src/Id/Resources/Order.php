@@ -102,6 +102,19 @@ class Order extends BaseResource
     }
 
     /**
+     * Deliveries of this order's goods; `create()` ships them (see Shipments::create()).
+     *
+     * @throws Throwable
+     */
+    public function shipments(): Shipments
+    {
+        return Shipments::builder(fn() => $this->billable->anikeenId()
+            ->request('GET', sprintf('v1/orders/%s/shipments', $this->id)))
+            ->setBillable($this->billable)
+            ->setParent($this);
+    }
+
+    /**
      * Get order items from given order.
      *
      * @throws Throwable
