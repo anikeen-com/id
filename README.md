@@ -196,6 +196,26 @@ $order = $user->orders()->create([
 ]);
 ```
 
+Once a paid order is sent, create a shipment. Anikeen ID adds its delivery note to the user's
+order documents (with the tracking link) and sends `order.shipped` to your webhook endpoints.
+Without `items`, everything physical that is left is shipped; partial deliveries name the items:
+
+```php
+$order = $user->orders()->find($orderId);
+
+$shipment = $order->shipments()->create([
+    'carrier' => 'DHL',
+    'tracking_number' => '00340434161234567890',
+    'tracking_url' => 'https://www.dhl.de/…?piececode=00340434161234567890',
+    // 'items' => [['order_item_id' => $itemId, 'units' => 1]],
+]);
+
+$shipment->number;          // LS-2026-0001
+$shipment->deliveryNote();  // the delivery note as PDF
+```
+
+Only the app that created the order (or a trusted app) can ship it, and only once it is paid.
+
 `checkout()` on such a draft throws `ConfirmationRequiredException`; its `confirmationUrl`
 points to the same page. Trusted apps keep checking out directly.
 
