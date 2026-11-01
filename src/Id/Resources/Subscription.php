@@ -16,8 +16,6 @@ use Throwable;
  * @property float $vat_rate
  * @property array $payload
  * @property string $ends_at
- * @property string $webhook_url
- * @property string $webhook_secret
  * @property null|string $confirmation_url where the user confirms it (third-party apps)
  */
 class Subscription extends BaseResource
@@ -36,9 +34,7 @@ class Subscription extends BaseResource
      *      price: float,
      *      vat_rate: float,
      *      payload: null|array,
-     *      ends_at: null|string,
-     *      webhook_url: null|string,
-     *      webhook_secret: null|string
+     *      ends_at: null|string
      *  } $attributes The subscription data:
      *    - group:          The group (optional)
      *    - name:           The name (required when set)
@@ -48,8 +44,6 @@ class Subscription extends BaseResource
      *    - vat_rate:       The VAT rate (required when set)
      *    - payload:        The payload (optional)
      *    - ends_at:        The end date (optional)
-     *    - webhook_url:    The webhook URL (optional)
-     *    - webhook_secret: The webhook secret (optional)
      * @throws Throwable
      */
     public function update(array $attributes): self

@@ -22,9 +22,7 @@ class Subscriptions extends BaseCollection
      *      price: float,
      *      vat_rate: float,
      *      payload: null|array,
-     *      ends_at: null|string,
-     *      webhook_url: null|string,
-     *      webhook_secret: null|string
+     *      ends_at: null|string
      *  } $attributes The subscription data:
      *    - group:          The group (optional)
      *    - name:           The name
@@ -34,8 +32,6 @@ class Subscriptions extends BaseCollection
      *    - vat_rate:       The VAT rate (required when set)
      *    - payload:        The payload (optional)
      *    - ends_at:        The end date (optional)
-     *    - webhook_url:    The webhook URL (optional)
-     *    - webhook_secret: The webhook secret (optional)
      * @throws Throwable
      */
     public function create(array $attributes): Subscription
