@@ -180,6 +180,22 @@ instead of trusting the query string. Subscriptions work the same way
 (`$user->subscriptions()->create([...])->confirmationUrl(...)`, `&subscription=…`).
 Unconfirmed bookings are cancelled after 24 hours.
 
+Physical goods need a shipping address (`first_name`, `last_name`, `address`, `postal_code`,
+`city`, `country_iso`). The user can change both addresses on the confirmation page, so read the
+shipping address from the order (or the `order.completed` webhook) before you ship. An item's
+`image_url` is copied to Anikeen ID and stays visible on the order and invoice:
+
+```php
+$order = $user->orders()->create([
+    'billing_address_id' => $addressId,
+    'shipping_address' => ['first_name' => 'Ada', 'last_name' => 'Lovelace', 'address' => 'Main St', 'house_number' => '1', 'postal_code' => '10115', 'city' => 'Berlin', 'country_iso' => 'DE'],
+    'items' => [
+        ['type' => 'physical', 'name' => 'T-shirt', 'unit' => 'piece', 'units' => 1, 'gross_price' => '24.90', 'image_url' => 'https://shop.test/img/shirt.png'],
+        ['type' => 'physical-reduced', 'name' => 'Artbook', 'unit' => 'piece', 'units' => 1, 'gross_price' => '19.95'],
+    ],
+]);
+```
+
 `checkout()` on such a draft throws `ConfirmationRequiredException`; its `confirmationUrl`
 points to the same page. Trusted apps keep checking out directly.
 

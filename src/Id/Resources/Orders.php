@@ -36,30 +36,37 @@ class Orders extends BaseCollection
      *     },
      *     shipping_address: null|array{
      *          company_name: null|string,
-     *          first_name:  string,
+     *          first_name: string,
      *          last_name: string,
-     *          address: null|string,
-     *          address_2: string,
+     *          address: string,
+     *          address_2: null|string,
      *          house_number: null|string,
      *          city: string,
-     *          state: string,
+     *          state: null|string,
      *          postal_code: string,
      *          country_iso: string,
      *          phone_number: null|string,
      *          email: null|string
      *     },
      *     items: array<array{
-     *         type:        string,
-     *         name:        string,
-     *         description: string,
-     *         price:       float|int,
-     *         unit:        string,
-     *         units:       int
+     *         type:         string,
+     *         name:         string,
+     *         description?: null|string,
+     *         image_url?:   null|string,
+     *         price?:       float|int|string,
+     *         gross_price?: float|int|string,
+     *         unit:         string,
+     *         units:        int
      *     }>
      * } $attributes The order data:
      *   - billing_address:  Billing address (ISO 3166-1 alpha-2 country code)
-     *   - shipping_address: Shipping address (first name, last name, ISO 3166-1 alpha-2 country code)
-     *   - items:            Array of order items (each with type, name, price, unit, units, and quantity)
+     *   - shipping_address: Shipping address for physical items (first name, last name, address, postal code, city, ISO 3166-1 alpha-2 country code)
+     *   - items:            Array of order items:
+     *       - type:        digital, physical or physical-reduced (VAT category)
+     *       - price/gross_price: net or gross unit price, one of both
+     *       - unit:        hour, day, week, month, year, onetime or piece
+     *       - image_url:   http(s) URL of a product image; Anikeen ID copies it, so it stays
+     *                      visible on the order and invoice when the shop removes it later
      * @throws Throwable
      */
     public function create(array $attributes = []): Order
