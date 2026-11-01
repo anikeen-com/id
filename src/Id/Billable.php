@@ -29,6 +29,21 @@ trait Billable
     use ManagesTransactions;
     use ManagesUserSshKeys;
 
+    /*
+     * API results cached per instance. Declared, so Eloquent models don't take them for
+     * attributes (an undeclared property goes through Model::__set and save() then fails
+     * with "no such column").
+     */
+    protected mixed $addressesCache = null;
+    protected mixed $countriesCache = null;
+    protected mixed $defaultPaymentMethodCache = null;
+    protected mixed $invoicesCache = null;
+    protected mixed $ordersCache = null;
+    protected mixed $paymentMethodsCache = null;
+    protected mixed $subscriptionsCache = null;
+    protected mixed $transactionsCache = null;
+    protected mixed $userDataCache = null;
+
     /**
      * Get the currently authenticated user.
      *
