@@ -183,6 +183,36 @@ Unconfirmed bookings are cancelled after 24 hours.
 `checkout()` on such a draft throws `ConfirmationRequiredException`; its `confirmationUrl`
 points to the same page. Trusted apps keep checking out directly.
 
+### Webhooks
+
+Anikeen ID sends `order.*` and `subscription.*` events to the webhook endpoints of your app (set up
+in the Anikeen ID admin panel, which also shows the signing secret `whsec_…`). Verify each request
+with the raw body and answer 2xx within 10 seconds; failed deliveries are retried for about three days.
+
+```php
+use Anikeen\Id\Exceptions\SignatureVerificationException;
+use Anikeen\Id\Webhooks\Webhook;
+
+Route::post('webhooks/anikeen', function (Request $request) {
+    try {
+        $event = Webhook::constructEvent($request->getContent(), $request->header('Anikeen-Signature'), config('services.anikeen.webhook_secret'));
+    } catch (SignatureVerificationException) {
+        abort(400);
+    }
+
+    match ($event['type']) {
+        'order.completed' => Shop::fulfil($event['data']['object']['id']),
+        'subscription.cancelled' => Panel::suspend($event['data']['object']['id']),
+        default => null,
+    };
+
+    return response()->noContent();
+})->withoutMiddleware(VerifyCsrfToken::class);
+```
+
+Events can arrive more than once or out of order: use `$event['id']` to skip duplicates, and
+reload the object through the API when the current state matters.
+
 ### Change the default access token / refresh token field name
 
 If you access / refresh token fields differs from the default `anikeen_id_access_token` / `anikeen_id_refresh_token`, you can specify the field name in the `AppServiceProvider` boot method:
