@@ -2,6 +2,7 @@
 
 namespace Anikeen\Id\Concerns;
 
+use Anikeen\Id\Resources\AppCheckoutSessions;
 use Anikeen\Id\Resources\AppOrders;
 use Anikeen\Id\Result;
 use Throwable;
@@ -17,6 +18,15 @@ trait ManagesUserBilling
     public function appOrders(): AppOrders
     {
         return new AppOrders();
+    }
+
+    /**
+     * Checkout sessions of the app for any user, e.g. to look one up from a checkout.* webhook
+     * (create() then needs a user_id).
+     */
+    public function appCheckoutSessions(): AppCheckoutSessions
+    {
+        return new AppCheckoutSessions();
     }
 
     /**
