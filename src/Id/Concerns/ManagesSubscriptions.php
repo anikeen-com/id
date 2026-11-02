@@ -2,8 +2,10 @@
 
 namespace Anikeen\Id\Concerns;
 
+use Anikeen\Id\Resources\AppCheckoutSessions;
 use Anikeen\Id\Resources\AppOrders;
 use Anikeen\Id\Resources\AppSubscriptions;
+use Anikeen\Id\Resources\CheckoutSessions;
 use Anikeen\Id\Resources\Subscriptions;
 use Throwable;
 
@@ -38,6 +40,24 @@ trait ManagesSubscriptions
     }
 
     /**
+     * Checkout sessions for the user, created with the app's own token (trusted apps only, scope
+     * subscriptions:client): the user confirms several subscriptions at once on Anikeen ID.
+     */
+    public function appCheckoutSessions(): AppCheckoutSessions
+    {
+        return new AppCheckoutSessions($this);
+    }
+
+    /**
+     * Checkout sessions with the user's own access token (any app): the user confirms several
+     * subscriptions at once on Anikeen ID.
+     */
+    public function checkoutSessions(): CheckoutSessions
+    {
+        return new CheckoutSessions($this);
+    }
+
+    /**
      * The user's orders that bill the app's subscriptions, read with the app's own token
      * (trusted apps only, scope orders:client), e.g. ->pending() for unpaid ones.
      */
@@ -45,4 +65,4 @@ trait ManagesSubscriptions
     {
         return new AppOrders($this);
     }
-}
+}

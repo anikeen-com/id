@@ -157,6 +157,63 @@ Each order has `status` (`processing` = current month, still collecting; `pendin
 paid; `completed`; `cancelled`), the totals, `payment_attempts`, `next_payment_attempt_at` (null =
 no more automatic retries) and `last_payment_error`.
 
+### Checkout sessions (the user confirms several subscriptions at once)
+
+Instead of checking subscriptions out itself, an app can let the user confirm them on Anikeen ID,
+all of them in one step: a checkout session bundles new subscriptions (or existing drafts of the
+app, `['id' => …]`) of one user. The user sees every item with its price and the total of the first
+period, confirms (all subscriptions start, or none) or cancels, and returns to `return_url`.
+Open sessions expire after 24 hours with their drafts. Trusted apps can still check out directly;
+sessions are opt-in.
+
+Example: the Console's builder ("Jetzt kaufen") with several products and coupon prices:
+
+```php
+use Anikeen\Id\Exceptions\ApiException;
+
+$session = $request->user()->appCheckoutSessions()->create([   // app token; or ->checkoutSessions() with the user's token
+    'return_url' => route('builder.done'),                      // same origin as one of your redirect URIs
+    'metadata' => ['cart' => $cart->id],                        // returned as is
+    'idempotency_key' => "cart:{$cart->id}",                    // retries return the same session
+    'subscriptions' => $cart->items->map(fn ($item) => [
+        'group' => $team->id,
+        'name' => $item->product->name,
+        'description' => $item->label,
+        'unit' => $item->unit,                                  // hour, day, week, month, year
+        'price' => $item->priceAfterCoupon(),                   // net, per unit
+        'payload' => ['cart_item' => $item->id],
+    ])->all(),
+]);
+
+$cart->update(['checkout_session_id' => $session->id, 'subscription_ids' => $session->subscriptionIds()]);
+
+return redirect($session->confirmationUrl());
+// later: https://console.test/builder/done?status=completed&checkout_session=01K…
+```
+
+Provision when the webhook arrives (or after checking the session through the API; never trust the
+query string):
+
+```php
+use Anikeen\Id\Webhooks\EventType;
+
+match ($event['type']) {
+    EventType::CHECKOUT_COMPLETED => Provisioner::provision($event['data']['object']['subscriptions']), // all running
+    EventType::CHECKOUT_CANCELLED, EventType::CHECKOUT_EXPIRED => Cart::release($event['data']['object']['metadata']['cart'] ?? null),
+    default => null,
+};
+
+app(AnikeenId::class)->appCheckoutSessions()->find($id)?->isCompleted(); // any user's session
+$session->refresh()->subscriptions();  // AppSubscription objects
+$session->cancel();                    // withdraw an open session and its drafts (e.g. the cart changed)
+```
+
+While a session is open, its subscriptions can't be checked out or repriced by the app (409
+`in_checkout_session` / `not_changeable`). The session's `status` is `open`, `completed`,
+`cancelled` or `expired` (`isOpen()`, `isCompleted()`, `isCancelled()` for cancelled or expired).
+`subscription.activated` / `subscription.cancelled` are still sent per subscription, before the
+`checkout.*` event of the session.
+
 ### Selling as a third-party app (user confirms on Anikeen ID)
 
 Apps that are not trusted can create orders and subscriptions for the signed-in user (user token),
@@ -222,12 +279,13 @@ points to the same page. Trusted apps keep checking out directly.
 
 ### Webhooks
 
-Anikeen ID sends `order.*` and `subscription.*` events to the webhook endpoints of your app (set up
+Anikeen ID sends `order.*`, `subscription.*` and `checkout.*` events to the webhook endpoints of your app (set up
 in the Anikeen ID admin panel, which also shows the signing secret `whsec_…`). Verify each request
 with the raw body and answer 2xx within 10 seconds; failed deliveries are retried for about three days.
 
 ```php
 use Anikeen\Id\Exceptions\SignatureVerificationException;
+use Anikeen\Id\Webhooks\EventType;
 use Anikeen\Id\Webhooks\Webhook;
 
 Route::post('webhooks/anikeen', function (Request $request) {
@@ -238,8 +296,9 @@ Route::post('webhooks/anikeen', function (Request $request) {
     }
 
     match ($event['type']) {
-        'order.completed' => Shop::fulfil($event['data']['object']['id']),
-        'subscription.cancelled' => Panel::suspend($event['data']['object']['id']),
+        EventType::ORDER_COMPLETED => Shop::fulfil($event['data']['object']['id']),
+        EventType::SUBSCRIPTION_CANCELLED => Panel::suspend($event['data']['object']['id']),
+        EventType::CHECKOUT_COMPLETED => Panel::provision($event['data']['object']['subscription_ids']),
         default => null,
     };
 
@@ -471,6 +530,7 @@ public function shippingPriceList(): Result
 
 ```php
 public function appOrders(): AppOrders
+public function appCheckoutSessions(): AppCheckoutSessions
 public function createOrderForUser(string $userId, array $attributes): Result
 public function createTransactionForUser(string $userId, array $attributes): Result
 ```
@@ -573,6 +633,8 @@ public function getBillable(): Billable
 ```php
 public function subscriptions(): Subscriptions
 public function appSubscriptions(): AppSubscriptions
+public function appCheckoutSessions(): AppCheckoutSessions
+public function checkoutSessions(): CheckoutSessions
 public function appOrders(): AppOrders
 public function setBillable(Billable|Model $billable): self
 public function getBillable(): Billable

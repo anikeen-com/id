@@ -29,6 +29,7 @@ use JsonSerializable;
  * @property int $failed_renewal_retries
  * @property ?array $payload
  * @property ?string $idempotency_key
+ * @property ?string $checkout_session_id the checkout session the user confirms it in, if any
  */
 class AppSubscription implements JsonSerializable
 {
