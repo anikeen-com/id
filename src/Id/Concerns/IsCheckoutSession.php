@@ -10,8 +10,9 @@ trait IsCheckoutSession
     /**
      * Where the user confirms (or cancels) all of the session's subscriptions, or null once the
      * session is no longer open. The user then returns to the session's `return_url` with
-     * `status` (completed, cancelled or expired) and `checkout_session` (the id). Check the status
-     * through the API or the checkout.* webhooks; don't trust the query string.
+     * `status` (completed or cancelled when confirming or cancelling; expired only from the
+     * "back to app" link of a session that had expired) and `checkout_session` (the id). Check the
+     * status through the API or the checkout.* webhooks; don't trust the query string.
      */
     public function confirmationUrl(): ?string
     {
