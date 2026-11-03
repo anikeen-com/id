@@ -32,6 +32,8 @@ class AppCheckoutSessions
      *         description?: null|string,
      *         unit: string,
      *         price: float|string,
+     *         monthly_cap?: null|float|string,
+     *         predecessor_id?: null|string,
      *         vat_rate?: float,
      *         payload?: null|array,
      *         ends_at?: null|string

@@ -17,6 +17,9 @@ use JsonSerializable;
  * @property ?string $description
  * @property string $unit
  * @property float $price
+ * @property ?float $monthly_cap net, at most this per calendar month (hour and day units)
+ * @property ?float $expected_monthly_price gross estimate for a month (720 hours, at most the monthly cap)
+ * @property ?string $predecessor_id the subscription this one replaced (a resize); they share the monthly cap
  * @property ?float $vat_rate
  * @property bool $active
  * @property bool $autorenew
