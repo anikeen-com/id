@@ -20,6 +20,8 @@ class Subscriptions extends BaseCollection
      *      description: null|string,
      *      unit: string,
      *      price: float,
+     *      monthly_cap?: null|float,
+     *      predecessor_id?: null|string,
      *      vat_rate: float,
      *      payload: null|array,
      *      ends_at: null|string
@@ -29,6 +31,8 @@ class Subscriptions extends BaseCollection
      *    - description:    The description (optional)
      *    - unit:           The unit (e.g. "hour", "day", "week", "month", "year")
      *    - price:          The price per unit
+     *    - monthly_cap:    Net, at most this per calendar month (hour and day units, max. 2 decimals; optional)
+     *    - predecessor_id: The subscription this one replaces (a resize); both share the monthly cap (optional)
      *    - vat_rate:       The VAT rate (required when set)
      *    - payload:        The payload (optional)
      *    - ends_at:        The end date (optional)

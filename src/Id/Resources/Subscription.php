@@ -13,6 +13,9 @@ use Throwable;
  * @property string $description
  * @property string $unit
  * @property float $price
+ * @property ?float $monthly_cap net, at most this per calendar month (hour and day units)
+ * @property ?float $expected_monthly_price gross estimate for a month (720 hours, at most the monthly cap)
+ * @property ?string $predecessor_id the subscription this one replaced (a resize); they share the monthly cap
  * @property float $vat_rate
  * @property array $payload
  * @property string $ends_at
@@ -32,6 +35,7 @@ class Subscription extends BaseResource
      *      description: null|string,
      *      unit: string,
      *      price: float,
+     *      monthly_cap?: null|float,
      *      vat_rate: float,
      *      payload: null|array,
      *      ends_at: null|string
@@ -41,6 +45,7 @@ class Subscription extends BaseResource
      *    - description:    The description (optional)
      *    - unit:           The unit (required when set, e.g. "hour", "day", "week", "month", "year")
      *    - price:          The price per unit (required when set)
+     *    - monthly_cap:    Net, at most this per calendar month (hour and day units; optional)
      *    - vat_rate:       The VAT rate (required when set)
      *    - payload:        The payload (optional)
      *    - ends_at:        The end date (optional)

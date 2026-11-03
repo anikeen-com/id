@@ -44,12 +44,18 @@ class AppSubscriptions
      *     description?: null|string,
      *     unit: string,
      *     price: float|string,
+     *     monthly_cap?: null|float|string,
+     *     predecessor_id?: null|string,
      *     vat_rate?: float,
      *     payload?: null|array,
      *     ends_at?: null|string,
      *     idempotency_key?: null|string
      * } $attributes With an idempotency_key (max. 191 characters), a retried call returns the
      *               subscription created by the first one instead of a duplicate.
+     *               monthly_cap: net, at most this per calendar month (hour and day units only,
+     *               at most 2 decimals, not below price; null = no cap).
+     *               predecessor_id: the subscription this one replaces (a resize; same user and
+     *               app, checked out, not cancelled): both share the monthly cap within a month.
      *
      * @throws ApiException
      */
