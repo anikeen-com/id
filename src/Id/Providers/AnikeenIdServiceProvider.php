@@ -8,8 +8,11 @@ use Anikeen\Id\Auth\UserProvider;
 use Anikeen\Id\Contracts;
 use Anikeen\Id\Helpers\JwtParser;
 use Anikeen\Id\Repository;
+use Illuminate\Auth\AuthManager;
 use Illuminate\Auth\RequestGuard;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Http\Request;
+use InvalidArgumentException;
 use Illuminate\Support\ServiceProvider;
 
 class AnikeenIdServiceProvider extends ServiceProvider
@@ -38,15 +41,28 @@ class AnikeenIdServiceProvider extends ServiceProvider
     }
 
     /**
-     * Register the token guard.
+     * Register the `anikeen` guard driver and user provider.
+     *
+     * Laravel binds non-static extend() closures to the AuthManager, so these closures are
+     * static and use nothing but their arguments.
      */
     protected function registerGuard(): void
     {
-        Auth::resolved(function ($auth) {
-            $auth->extend('anikeen', function ($app, $name, array $config) {
-                return tap($this->makeGuard($config), function ($guard) {
-                    $this->app->refresh('request', $guard, 'setRequest');
-                });
+        $this->callAfterResolving('auth', static function (AuthManager $auth): void {
+            $auth->provider('anikeen', static fn (Application $app, array $config) => new AnikeenIdUserProvider(
+                $app->make(AnikeenId::class),
+                $app->make('request'),
+                $config['model'] ?? $app['config']->get('auth.providers.users.model'),
+                $config['fields'] ?? [],
+                $config['column'] ?? null,
+            ));
+
+            $auth->extend('anikeen', static function (Application $app, string $name, array $config): RequestGuard {
+                $guard = AnikeenIdServiceProvider::makeGuard($app, $config);
+
+                $app->refresh('request', $guard, 'setRequest');
+
+                return $guard;
             });
         });
     }
@@ -54,15 +70,20 @@ class AnikeenIdServiceProvider extends ServiceProvider
     /**
      * Make an instance of the token guard.
      */
-    protected function makeGuard(array $config): RequestGuard
+    public static function makeGuard(Application $app, array $config): RequestGuard
     {
-        return new RequestGuard(function ($request) use ($config) {
+        $providerName = $config['provider'] ?? $app['config']->get('auth.defaults.provider', 'users');
+        $provider = $app['auth']->createUserProvider($providerName)
+            ?? throw new InvalidArgumentException("Authentication user provider [$providerName] is not configured.");
+        $providerConfig = $app['config']->get("auth.providers.$providerName", []);
+
+        return new RequestGuard(static function (Request $request) use ($app, $provider, $providerName, $providerConfig, $config) {
             return (new TokenGuard(
-                new UserProvider(Auth::createUserProvider($config['provider']), $config['provider']),
-                $this->app->make('encrypter'),
-                $this->app->make(JwtParser::class)
+                new UserProvider($provider, $providerName, $config['column'] ?? $providerConfig['column'] ?? null),
+                $app->make('encrypter'),
+                $app->make(JwtParser::class)
             ))->user($request);
-        }, $this->app['request']);
+        }, $app['request'], $provider);
     }
 
     /**

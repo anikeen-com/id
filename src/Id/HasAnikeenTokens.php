@@ -26,9 +26,23 @@ trait HasAnikeenTokens
      */
     public function anikeenTokenCan(string $scope): bool
     {
-        $scopes = $this->accessToken ? $this->accessToken->scopes : [];
+        $scopes = (array) ($this->accessToken->scopes ?? []);
 
-        return in_array('*', $scopes) || in_array($scope, $this->accessToken->scopes);
+        return in_array('*', $scopes, true) || in_array($scope, $scopes, true);
+    }
+
+    /**
+     * Determine if the current API token has any of the given scopes.
+     */
+    public function anikeenTokenCanAny(array $scopes): bool
+    {
+        foreach ($scopes as $scope) {
+            if ($this->anikeenTokenCan($scope)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

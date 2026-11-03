@@ -9,38 +9,39 @@ use Exception;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 use Illuminate\Auth\AuthenticationException;
-use Illuminate\Auth\GuardHelpers;
-use Illuminate\Container\Container;
-use Illuminate\Contracts\Container\BindingResolutionException;
-use Illuminate\Contracts\Debug\ExceptionHandler;
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Contracts\Encryption\Encrypter;
 use Illuminate\Cookie\CookieValuePrefix;
 use Illuminate\Cookie\Middleware\EncryptCookies;
-use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use stdClass;
 use Throwable;
 
+/**
+ * Resolves the user of a request from an Anikeen ID access token (JWT, "Authorization: Bearer …")
+ * or from the encrypted token cookie of CreateFreshApiToken.
+ *
+ * A bearer token is verified with the JwtParser (signature, expiry). Its `sub` is the user's
+ * Anikeen ID, looked up by the provider (AnikeenIdUserProvider::retrieveByAnikeenId(), column
+ * `anikeen_id` by default). The token is attached to the user: `$user->anikeenTokenCan('scope')`.
+ *
+ * With `services.anikeen.verify_revocation` the token is also checked against Anikeen ID
+ * (GET v1/user, cached per token for `services.anikeen.revocation_cache_ttl` seconds), so
+ * revoked tokens stop working before they expire.
+ */
 class TokenGuard
 {
-    use GuardHelpers;
-
-    private Encrypter $encrypter;
-
-    private JwtParser $jwtParser;
-
-    public function __construct(UserProvider $provider, Encrypter $encrypter, JwtParser $jwtParser)
-    {
-        $this->provider = $provider;
-        $this->encrypter = $encrypter;
-        $this->jwtParser = $jwtParser;
+    public function __construct(
+        protected UserProvider $provider,
+        private Encrypter $encrypter,
+        private JwtParser $jwtParser
+    ) {
+        //
     }
 
     /**
      * Get the user for the incoming request.
-     *
-     * @throws BindingResolutionException
-     * @throws Throwable
      */
     public function user(Request $request): ?Authenticatable
     {
@@ -55,9 +56,6 @@ class TokenGuard
 
     /**
      * Authenticate the incoming request via the Bearer token.
-     *
-     * @throws BindingResolutionException
-     * @throws Throwable
      */
     protected function authenticateViaBearerToken(Request $request): ?Authenticatable
     {
@@ -65,51 +63,97 @@ class TokenGuard
             return null;
         }
 
-        // If the access token is valid we will retrieve the user according to the user ID
-        // associated with the token. We will use the provider implementation which may
-        // be used to retrieve users from Eloquent. Next, we'll be ready to continue.
-        /** @var Authenticatable|HasAnikeenTokens $user */
-        $user = $this->provider->retrieveById(
-            $request->attributes->get('oauth_user_id') ?: null
-        );
+        // client credentials tokens have no user
+        if (!is_scalar($token->sub ?? null) || (string) $token->sub === '') {
+            return null;
+        }
 
-        return $user?->withAnikeenAccessToken($token);
+        if (!$this->tokenIsActive($token, (string) $request->bearerToken())) {
+            return null;
+        }
 
+        /** @var Authenticatable|HasAnikeenTokens|null $user */
+        $user = $this->retrieveUser((string) $token->sub);
+
+        return $user && method_exists($user, 'withAnikeenAccessToken')
+            ? $user->withAnikeenAccessToken($token)
+            : $user;
     }
 
     /**
-     * Authenticate and get the incoming request via the Bearer token.
-     *
-     * @throws BindingResolutionException
-     * @throws Throwable
+     * Verify the Bearer token and expose its claims as request attributes.
      */
     protected function validateRequestViaBearerToken(Request $request): ?stdClass
     {
         try {
             $decoded = $this->jwtParser->decode($request);
-
-            $request->attributes->set('oauth_access_token_id', $decoded->jti);
-            $request->attributes->set('oauth_client_id', $decoded->aud);
-            $request->attributes->set('oauth_client_trusted', $decoded->client->trusted);
-            $request->attributes->set('oauth_user_id', $decoded->sub);
-            $request->attributes->set('oauth_scopes', $decoded->scopes);
-
-            return $decoded;
-        } catch (AuthenticationException $e) {
-            $request->headers->set('Authorization', '', true);
-
-            Container::getInstance()->make(
-                ExceptionHandler::class
-            )->report($e);
-
+        } catch (AuthenticationException) {
             return null;
         }
+
+        $decoded->scopes = array_values(array_filter((array) ($decoded->scopes ?? []), 'is_string'));
+
+        $request->attributes->set('oauth_access_token_id', $decoded->jti ?? null);
+        $request->attributes->set('oauth_client_id', $decoded->aud ?? null);
+        $request->attributes->set('oauth_client_trusted', $decoded->client->trusted ?? null);
+        $request->attributes->set('oauth_user_id', $decoded->sub ?? null);
+        $request->attributes->set('oauth_scopes', $decoded->scopes);
+
+        return $decoded;
+    }
+
+    /**
+     * Whether Anikeen ID still accepts the token (only with services.anikeen.verify_revocation).
+     */
+    protected function tokenIsActive(stdClass $token, string $jwt): bool
+    {
+        if (!config('services.anikeen.verify_revocation')) {
+            return true;
+        }
+
+        $key = 'anikeen-id:token-active:' . hash('sha256', $jwt);
+
+        if (($cached = Cache::get($key)) !== null) {
+            return (bool) $cached;
+        }
+
+        try {
+            $result = (clone app(AnikeenId::class))->withToken($jwt)->getAuthedUser();
+        } catch (Throwable) {
+            return false; // Anikeen ID unreachable: fail closed, ask again next time
+        }
+
+        $status = $result->response?->getStatusCode();
+
+        if ($result->success()) {
+            $active = true;
+        } elseif (in_array($status, [401, 403], true)) {
+            $active = false;
+        } else {
+            return false; // server error: fail closed without caching
+        }
+
+        $ttl = (int) config('services.anikeen.revocation_cache_ttl', 300);
+        if (isset($token->exp)) {
+            $ttl = max(1, min($ttl, (int) $token->exp - time()));
+        }
+        Cache::put($key, $active, $ttl);
+
+        return $active;
+    }
+
+    /**
+     * Find the local user of an Anikeen ID.
+     */
+    protected function retrieveUser(string $anikeenId): ?Authenticatable
+    {
+        return $this->provider->retrieveByAnikeenId($anikeenId);
     }
 
     /**
      * Authenticate the incoming request via the token cookie.
      */
-    protected function authenticateViaCookie(Request $request): mixed
+    protected function authenticateViaCookie(Request $request): ?Authenticatable
     {
         if (!$token = $this->getTokenViaCookie($request)) {
             return null;
@@ -118,9 +162,11 @@ class TokenGuard
         // If this user exists, we will return this user and attach a "transient" token to
         // the user model. The transient token assumes it has all scopes since the user
         // is physically logged into the application via the application's interface.
-        /** @var Authenticatable|HasAnikeenTokens $user */
-        if ($user = $this->provider->retrieveById($token['sub'])) {
-            return $user->withAnikeenAccessToken((object)['scopes' => ['*']]);
+        /** @var Authenticatable|HasAnikeenTokens|null $user */
+        if ($user = $this->retrieveUser((string) $token['sub'])) {
+            return method_exists($user, 'withAnikeenAccessToken')
+                ? $user->withAnikeenAccessToken((object) ['scopes' => ['*']])
+                : $user;
         }
 
         return null;
@@ -136,15 +182,18 @@ class TokenGuard
         // database. If we can't decrypt the value we'll bail out with a null return.
         try {
             $token = $this->decodeJwtTokenCookie($request);
-        } catch (Exception $e) {
+        } catch (Exception) {
+            return null;
+        }
+
+        if (!isset($token['sub'], $token['expiry'])) {
             return null;
         }
 
         // We will compare the CSRF token in the decoded API token against the CSRF header
         // sent with the request. If they don't match then this request isn't sent from
         // a valid source and we won't authenticate the request for further handling.
-        if (!AnikeenId::$ignoreCsrfToken && (!$this->validCsrf($token, $request) ||
-                time() >= $token['expiry'])) {
+        if (time() >= $token['expiry'] || (!AnikeenId::$ignoreCsrfToken && !$this->validCsrf($token, $request))) {
             return null;
         }
 
@@ -156,7 +205,7 @@ class TokenGuard
      */
     protected function decodeJwtTokenCookie(Request $request): array
     {
-        return (array)JWT::decode(
+        return (array) JWT::decode(
             CookieValuePrefix::remove($this->encrypter->decrypt($request->cookie(AnikeenId::cookie()), AnikeenId::$unserializesCookies)),
             new Key(
                 $this->encrypter->getKey(),
@@ -171,8 +220,8 @@ class TokenGuard
     protected function validCsrf(array $token, Request $request): bool
     {
         return isset($token['csrf']) && hash_equals(
-                $token['csrf'], $this->getTokenFromRequest($request)
-            );
+            $token['csrf'], $this->getTokenFromRequest($request)
+        );
     }
 
     /**
@@ -186,7 +235,7 @@ class TokenGuard
             $token = CookieValuePrefix::remove($this->encrypter->decrypt($header, static::serialized()));
         }
 
-        return $token;
+        return (string) $token;
     }
 
     /**

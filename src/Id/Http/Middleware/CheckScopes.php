@@ -6,7 +6,7 @@ use Anikeen\Id\Exceptions\MissingScopeException;
 use Closure;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
+use Symfony\Component\HttpFoundation\Response;
 
 class CheckScopes extends UseParameters
 {
@@ -17,7 +17,7 @@ class CheckScopes extends UseParameters
      */
     public function handle(Request $request, Closure $next, ...$scopes): Response
     {
-        if (!$request->user() || !$request->user()->anikeenToken()) {
+        if (!$request->user() || !method_exists($request->user(), 'anikeenToken') || !$request->user()->anikeenToken()) {
             throw new AuthenticationException;
         }
 

@@ -286,30 +286,10 @@ public function boot(): void
 }
 ```
 
-### Implementing Auth
+### Implementing Auth (API tokens)
 
-This method should typically be called in the `boot` method of your `AppServiceProvider` class:
-
-```php
-use Anikeen\Id\AnikeenId;
-use Anikeen\Id\Providers\AnikeenIdUserProvider;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-
-public function boot(): void
-{
-    Auth::provider('anikeen', function ($app, array $config) {
-        return new AnikeenIdUserProvider(
-            $app->make(AnikeenId::class),
-            $app->make(Request::class),
-            $config['model'],
-            $config['fields'] ?? [],
-        );
-    });
-}
-```
-
-reference the guard in the `guards` configuration of your `auth.php` configuration file:
+The package registers an `anikeen` guard driver and an `anikeen` user provider. Reference them
+in `config/auth.php`:
 
 ```php
 'guards' => [
@@ -323,11 +303,7 @@ reference the guard in the `guards` configuration of your `auth.php` configurati
         'provider' => 'anikeen',
     ],
 ],
-```
 
-reference the provider in the `providers` configuration of your `auth.php` configuration file:
-
-```php
 'providers' => [
     'users' => [
         'driver' => 'eloquent',
@@ -337,10 +313,47 @@ reference the provider in the `providers` configuration of your `auth.php` confi
     'anikeen' => [
         'driver' => 'anikeen',
         'model' => App\Models\User::class,
-        'fields' => ['first_name', 'last_name', 'email'],
+        'column' => 'anikeen_id', // optional, see below
     ],
 ],
 ```
+
+The guard accepts `Authorization: Bearer <access token>` with an access token issued by Anikeen ID
+(personal access token or OAuth token, a JWT). It verifies the RS256 signature with Anikeen ID's
+public key and the time claims (`exp`, `nbf`, `iat`, 60 seconds leeway). The token's `sub` (the
+user's Anikeen ID) is looked up in the column `anikeen_id` of the user model: the provider's
+`column`, else `services.anikeen.user_id_column`, else `AnikeenId::useUserIdField()`. Tokens of
+unknown users, client credentials tokens (no `sub`), expired or forged tokens leave the request
+unauthenticated, so `auth:api` answers `401 {"message": "Unauthenticated."}` to JSON requests.
+
+The user model uses `Anikeen\Id\HasAnikeenTokens`; the token's scopes are then available:
+
+```php
+$request->user()->anikeenTokenCan('user');               // has the scope (or `*`)
+$request->user()->anikeenTokenCanAny(['user', 'user:read']);
+```
+
+or as middleware (`403` without the scope):
+
+```php
+use Anikeen\Id\Http\Middleware\CheckForAnyScope;
+use Anikeen\Id\Http\Middleware\CheckScopes;
+
+Route::middleware(['auth:api', CheckScopes::using('user')])->post(...);                    // all scopes
+Route::middleware(['auth:api', CheckForAnyScope::using('user', 'user:read')])->get(...);  // any scope
+```
+
+Options in `config/services.php` (`anikeen`):
+
+| Key | Default | |
+|-----|---------|-|
+| `public_key` | – | Anikeen ID's public key (PEM; `\n` escapes allowed) |
+| `public_key_path` | – | path to that key; without both the key shipped for the `mode` is used |
+| `user_id_column` | `anikeen_id` | column holding the user's Anikeen ID |
+| `verify_revocation` | `false` | also ask Anikeen ID (`GET v1/user`) whether the token is still valid, so revoked tokens stop working before they expire; fails closed when Anikeen ID is unreachable |
+| `revocation_cache_ttl` | `300` | seconds that answer is cached per token |
+
+The key is read once per process. In tests `AnikeenId::actingAs($user, ['user'])` signs in without a token.
 
 ## General
 
