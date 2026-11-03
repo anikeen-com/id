@@ -18,7 +18,8 @@ class AnikeenIdUserProvider implements UserProvider
         private AnikeenId $anikeenId,
         private Request   $request,
         private string    $model,
-        private array     $fields = []
+        private array     $fields = [],
+        private ?string   $column = null,
     ) {
         $this->accessTokenField = AnikeenId::getAccessTokenField();
     }
@@ -95,6 +96,17 @@ class AnikeenIdUserProvider implements UserProvider
         return $this->newModelQuery()
             ->where($this->createModel()->getAuthIdentifierName(), $identifier)
             ->first();
+    }
+
+    /**
+     * Find the user of an Anikeen ID (the `sub` of an access token) by the provider's `column`,
+     * else `services.anikeen.user_id_column`, else AnikeenId::getUserIdField() (`anikeen_id`).
+     */
+    public function retrieveByAnikeenId(string $anikeenId): ?Authenticatable
+    {
+        $column = $this->column ?: (config('services.anikeen.user_id_column') ?: AnikeenId::getUserIdField());
+
+        return $this->newModelQuery()->where($column, $anikeenId)->first();
     }
 
     /**
