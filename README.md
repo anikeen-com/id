@@ -469,6 +469,14 @@ arrive more than once or out of order: use `$event['id']` to skip duplicates, an
 object through the API when the current state matters. The admin panel can send a
 `webhook.test` event to check your endpoint.
 
+`subscription.renewed` (`EventType::SUBSCRIPTION_RENEWED`) is sent for every period after the
+first that was booked on the user's monthly order, with `$event['data']['period']`:
+`{subscription_id, period_start, period_end, periods, unit, order_id, order_item_id, items,
+currency_iso, net_amount}` (`net_amount` after a discount). Hourly subscriptions renew every hour,
+so this event is **opt-in**: select it explicitly for your endpoint, `*` doesn't include it.
+`order.*` events list the order's `items` and `invoice` like
+[app orders](#app-orders-trusted-apps-no-user-token).
+
 ### Errors
 
 Every failed request throws `Anikeen\Id\Exceptions\ApiException`, with the user's token as
@@ -629,6 +637,29 @@ $team->owner->appOrders()->find($orderId);     // null if unknown or not this us
 Each order has `status` (`processing` = current month, still collecting; `pending` = closed and not
 paid; `completed`; `cancelled`), the totals, `payment_attempts`, `next_payment_attempt_at` (null =
 no more automatic retries) and `last_payment_error`.
+
+Orders also list their lines and their invoice, e.g. to show a team's invoices or to attribute
+amounts (commissions) per subscription:
+
+```php
+$order = app(AnikeenId::class)->appOrders()->find($orderId);
+
+foreach ($order->items as $item) {
+    $item->subscription_id;                     // null for lines that bill no subscription
+    $item->period_start; $item->period_end;     // ISO 8601, the end is exclusive; null without a period
+    $item->net_amount;                          // units × price, rounded to cents
+    $item->discount;                            // {label, percent_off, amount_off} on a discount line, else null
+}
+
+$order->invoice;                                // null until paid, then {id, number, status, …, pdf_url}
+$pdf = app(AnikeenId::class)->appOrders()->invoicePdf($orderId); // the invoice PDF (binary)
+```
+
+The net amount actually billed for a subscription is the sum of `net_amount` of its lines
+(discount lines are negative). `invoicePdf()` throws `ApiException` with 404 `invoice_not_found`
+before the order is paid and 409 `invoice_not_ready` while the PDF is still being rendered
+(usually seconds after the payment; try again later). A collective order can also bill
+subscriptions of other apps of the same user and group.
 
 ### Checkout sessions (the user confirms several subscriptions at once)
 

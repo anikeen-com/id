@@ -33,6 +33,12 @@ final class EventType
      */
     public const SUBSCRIPTION_UPDATED = 'subscription.updated';
 
+    /**
+     * A new period of a running subscription was booked on its collective order; `data.period`
+     * describes it. Opt-in: only endpoints that select this event get it (not through `*`).
+     */
+    public const SUBSCRIPTION_RENEWED = 'subscription.renewed';
+
     /** The user confirmed a checkout session: all of its subscriptions are running (sent after their subscription.activated). */
     public const CHECKOUT_COMPLETED = 'checkout.completed';
 
