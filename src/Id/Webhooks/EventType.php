@@ -27,6 +27,12 @@ final class EventType
     /** The last discounted period of a subscription was billed; the following ones are billed at the full price. */
     public const SUBSCRIPTION_DISCOUNT_ENDED = 'subscription.discount_ended';
 
+    /**
+     * The price, unit, name, description or discount of a running subscription changed (right away
+     * or at the period end); `data.previous_attributes` has the changed fields' old values.
+     */
+    public const SUBSCRIPTION_UPDATED = 'subscription.updated';
+
     /** The user confirmed a checkout session: all of its subscriptions are running (sent after their subscription.activated). */
     public const CHECKOUT_COMPLETED = 'checkout.completed';
 

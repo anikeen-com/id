@@ -187,5 +187,6 @@ class CheckoutSessionsTest extends TestCase
         $this->assertContains('subscription.activated', EventType::all());
         $this->assertContains('subscription.trial_will_end', EventType::all());
         $this->assertContains('subscription.discount_ended', EventType::all());
+        $this->assertContains('subscription.updated', EventType::all());
     }
 }

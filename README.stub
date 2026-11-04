@@ -562,7 +562,8 @@ subscriptions it created (plus those of clients delegated to it).
 Failures throw `Anikeen\Id\Exceptions\ApiException` with `status` (0 = not reachable), a stable
 `error` code (`already_active`, `already_cancelled`, `not_active`, `already_paused`,
 `already_resumed`, `billing_address_missing`, `not_changeable`, `subscription_not_found`,
-`idempotency_key_conflict`, `in_checkout_session`, `trial_already_used`) and `isNotFound()`, `isConflict()`, `isTemporary()`:
+`idempotency_key_conflict`, `in_checkout_session`, `trial_already_used`, `proration_not_possible`,
+`credit_exceeds_bill`) and `isNotFound()`, `isConflict()`, `isTemporary()`:
 
 ```php
 try {
@@ -577,6 +578,43 @@ try {
     }
 }
 ```
+
+### Changing running subscriptions (trusted apps)
+
+`update()` changes a subscription before its checkout (afterwards only the description).
+`change()` changes price, unit, name, description or discount of a running subscription, like a
+plan change (send only what changes):
+
+```php
+use Anikeen\Id\Resources\AppSubscription;
+
+// upgrade now, prorated: the unused rest of the period is credited, the new price charged for it
+$subscription->change(['apply' => AppSubscription::APPLY_NOW, 'price' => '0.0274', 'name' => 'Cloud Server M']);
+
+// downgrade from the next period on
+$subscription->change(['apply' => AppSubscription::APPLY_PERIOD_END, 'price' => '4.99']);
+$subscription->scheduled_change;       // {applies_at, name, description, unit, price, discount, created_at}
+$subscription->cancelScheduledChange(); // keep the current values after all
+```
+
+- `now` credits the unused part of the current period at the rate it was billed at and charges
+  the rest at the new price, both on the user's open bill. A new `unit` starts a new, fully billed
+  period now. A downgrade whose credit would exceed the open bill is refused with 409
+  `credit_exceeds_bill`: schedule it for the period end instead. 409 `proration_not_possible` when
+  the current period wasn't billed to the subscription (e.g. a takeover); `period_end` works.
+- `period_end` changes nothing now; the next period is billed at the new values. A new
+  `period_end` change replaces the scheduled one, `now` drops it.
+- During a free trial nothing was billed: both just change what the trial ends in.
+- `discount` replaces the discount from the next billed period on, `null` ends it. When the unit
+  changes, a discount that counts in periods or an `amount_off` has to be sent again (422).
+- Subscriptions with a monthly cap change only with `period_end`.
+- Only running subscriptions can change: 409 `not_changeable` for drafts (use `update()`), paused,
+  cancelling, expired and cancelled ones.
+
+When a change takes effect (right away or at the period end), Anikeen ID sends
+`subscription.updated` (`EventType::SUBSCRIPTION_UPDATED`) with the old values of the changed
+fields in `$event['data']['previous_attributes']`. Telling the user about a price increase (and
+getting consent where needed) is up to your app.
 
 ### App orders (trusted apps, no user token)
 
