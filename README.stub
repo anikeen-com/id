@@ -716,6 +716,10 @@ Each order has `status` (`processing` = current month, still collecting; `pendin
 paid; `completed`; `cancelled`), the totals, `payment_attempts`, `next_payment_attempt_at` (null =
 no more automatic retries) and `last_payment_error`.
 
+Collective (monthly) orders are kept **per app**: your subscriptions are never billed on the same
+order as another app's, even if both use the same `group` (or none); clients delegated to your app
+bill on your app's orders. `$order->oauth_client_id` is the app that bills the order.
+
 Orders also list their lines and their invoice, e.g. to show a team's invoices or to attribute
 amounts (commissions) per subscription:
 
@@ -736,8 +740,10 @@ $pdf = app(AnikeenId::class)->appOrders()->invoicePdf($orderId); // the invoice 
 The net amount actually billed for a subscription is the sum of `net_amount` of its lines
 (discount lines are negative). `invoicePdf()` throws `ApiException` with 404 `invoice_not_found`
 before the order is paid and 409 `invoice_not_ready` while the PDF is still being rendered
-(usually seconds after the payment; try again later). A collective order can also bill
-subscriptions of other apps of the same user and group.
+(usually seconds after the payment; try again later). Legacy orders from before collective orders
+were kept per app (`oauth_client_id` null) can also bill other apps' subscriptions: there `items`
+lists only your lines (the totals are the whole order's), `invoice->pdf_url` is null and
+`invoicePdf()` throws `ApiException` with 403 `invoice_includes_other_apps`.
 
 ### Billing portal links (trusted apps)
 

@@ -9,6 +9,9 @@ use Throwable;
 /**
  * @property string $id
  * @property null|string $confirmation_url where the user confirms it (third-party apps, or `confirm`)
+ * @property null|string $oauth_client_id the app that bills the order: the app that created it, or for a monthly
+ *                                        (collective) order the app whose subscriptions it bills; collective orders
+ *                                        are kept per app. null for Anikeen's own (and legacy orders of several apps)
  * @property null|string $group
  * @property null|object $metadata the app's own data, returned as is
  * @property null|string $return_url where the user returns after confirming

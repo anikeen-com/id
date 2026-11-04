@@ -13,12 +13,14 @@ use Illuminate\Database\Eloquent\Model;
  * scope orders:client) - of one user ($user->appOrders()) or of all users
  * (app(AnikeenId::class)->appOrders()). Nothing is requested until a method is called.
  *
- * Each order is an object with id, user_id, group, metadata, status
- * (processing|pending|completed|cancelled), is_collective, net_total, vat_total, gross_total,
- * currency_iso, created_at, paid_at, payment_attempts, next_payment_attempt_at,
- * last_payment_error ({code, message} or null), and
+ * Each order is an object with id, user_id, oauth_client_id (the app that bills it: collective
+ * orders are kept per app, even for the same group; null on legacy orders that billed several
+ * apps), group, metadata, status (processing|pending|completed|cancelled), is_collective,
+ * net_total, vat_total, gross_total, currency_iso, created_at, paid_at, payment_attempts,
+ * next_payment_attempt_at, last_payment_error ({code, message} or null), and
  *
- * - items: all lines of the order, each {id, name, description, type, image_url, units, unit,
+ * - items: the order's lines of the app's subscriptions (all lines, except on legacy orders that
+ *   also billed other apps), each {id, name, description, type, image_url, units, unit,
  *   price, vat_rate, subscription_id, meter, monthly_cap, discount, period_start, period_end,
  *   net_amount, vat_amount, gross_amount}. period_end is exclusive (the start of the next
  *   period); both are null for lines without a period. discount ({label, percent_off,
