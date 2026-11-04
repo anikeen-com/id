@@ -4,7 +4,7 @@
 [![Total Downloads](https://img.shields.io/packagist/dt/anikeen/id.svg?style=flat-square)](https://packagist.org/packages/anikeen/id)
 [![License](https://img.shields.io/packagist/l/anikeen/id.svg?style=flat-square)](https://packagist.org/packages/anikeen/id)
 
-PHP Anikeen ID API Client for Laravel 11+
+PHP Anikeen ID API Client for Laravel 12+
 
 Sign in with Anikeen ID and let your users pay with their Anikeen ID account: one-off orders,
 subscriptions and physical goods, with invoices, VAT and payment handled by Anikeen ID.
@@ -71,7 +71,7 @@ Add to `config/services.php` file:
 
 ### Event Listener
 
-In Laravel 11, the default EventServiceProvider provider was removed. Instead, add the listener using the listen method on the Event facade, in your `AppServiceProvider` boot method:
+Since Laravel 11, the default EventServiceProvider provider was removed. Instead, add the listener using the listen method on the Event facade, in your `AppServiceProvider` boot method:
 
 ```php
 public function boot(): void
