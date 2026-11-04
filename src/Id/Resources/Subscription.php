@@ -4,6 +4,7 @@ namespace Anikeen\Id\Resources;
 
 use Anikeen\Id\Concerns\HasBillable;
 use Anikeen\Id\Concerns\HasConfirmationUrl;
+use Anikeen\Id\Concerns\HasSubscriptionStatus;
 use Anikeen\Id\Contracts\AppTokenRepository;
 use Throwable;
 
@@ -18,13 +19,21 @@ use Throwable;
  * @property ?string $predecessor_id the subscription this one replaced (a resize); they share the monthly cap
  * @property float $vat_rate
  * @property array $payload
+ * @property bool $active
+ * @property bool $autorenew
+ * @property bool $cancelled
+ * @property ?string $status draft, trial, active, paused, cancelling, expired or cancelled, see status()
+ * @property ?string $starts_at
  * @property string $ends_at
+ * @property ?string $cancels_at when a scheduled cancellation takes effect
+ * @property ?string $trial_ends_at
  * @property null|string $confirmation_url where the user confirms it (third-party apps)
  */
 class Subscription extends BaseResource
 {
     use HasBillable;
     use HasConfirmationUrl;
+    use HasSubscriptionStatus;
 
     /**
      * Update a given subscription from the current user.
