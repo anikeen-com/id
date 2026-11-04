@@ -8,7 +8,11 @@ use Throwable;
 
 /**
  * @property string $id
- * @property null|string $confirmation_url where the user confirms it (third-party apps)
+ * @property null|string $confirmation_url where the user confirms it (third-party apps, or `confirm`)
+ * @property null|string $group
+ * @property null|object $metadata the app's own data, returned as is
+ * @property null|string $return_url where the user returns after confirming
+ * @property null|string $expires_at when a draft created with `confirm` is cancelled unless confirmed
  */
 class Order extends BaseResource
 {
@@ -53,10 +57,14 @@ class Order extends BaseResource
      *           country_iso: string,
      *           phone_number: null|string,
      *           email: null|string
-     *      }
+     *      },
+     *      group?: null|string,
+     *      metadata?: null|array
      *  } $attributes The order data:
      *    - billing_address:  Billing address (ISO 3166-1 alpha-2 country code)
      *    - shipping_address: Shipping address for physical items (first name, last name, address, postal code, city, ISO 3166-1 alpha-2 country code)
+     *    - group:            The app's group (optional)
+     *    - metadata:         The app's own data (max. 50 keys), only while the order is a draft (optional)
      * @throws Throwable
      */
     public function update(array $attributes = []): self
@@ -68,6 +76,8 @@ class Order extends BaseResource
 
     /**
      * Checkout given order from the current user.
+     *
+     * A draft created with `confirm` can't be checked out once it expired (409 "confirmation_expired").
      *
      * @throws Throwable
      */

@@ -48,6 +48,10 @@ class Orders extends BaseCollection
      *          phone_number: null|string,
      *          email: null|string
      *     },
+     *     group?: null|string,
+     *     confirm?: bool,
+     *     return_url?: null|string,
+     *     metadata?: null|array,
      *     items: array<array{
      *         type:         string,
      *         name:         string,
@@ -61,6 +65,10 @@ class Orders extends BaseCollection
      * } $attributes The order data:
      *   - billing_address:  Billing address (ISO 3166-1 alpha-2 country code)
      *   - shipping_address: Shipping address for physical items (first name, last name, address, postal code, city, ISO 3166-1 alpha-2 country code)
+     *   - group:            The app's group, e.g. a team (optional)
+     *   - confirm:          Trusted apps: leave confirming and paying to the user (confirmation_url, expires after 24 hours; optional)
+     *   - return_url:       Where the user returns after confirming (same origin as one of the app's redirect URIs; optional)
+     *   - metadata:         The app's own data (max. 50 keys), returned as is in the API and webhooks (optional)
      *   - items:            Array of order items:
      *       - type:        digital, physical or physical-reduced (VAT category)
      *       - price/gross_price: net or gross unit price, one of both

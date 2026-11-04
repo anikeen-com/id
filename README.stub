@@ -587,6 +587,33 @@ try {
 }
 ```
 
+### Confirmable orders (trusted apps)
+
+Trusted apps can charge one-off orders right away (`'checkout' => true`). With `'confirm' => true`
+the user confirms and pays the order on Anikeen ID instead, like for a third-party app – e.g. a
+top-up the user starts in your app: Anikeen ID shows the order with VAT, the billing address and
+the payment method (one can be added there) and takes the payment.
+
+```php
+$order = app(AnikeenId::class)->createOrderForUser($team->owner->anikeen_id, [
+    'group' => $team->id,
+    'confirm' => true,
+    'return_url' => route('billing.topup.done'),   // same origin as one of your redirect URIs
+    'metadata' => ['topup' => $topup->id],          // returned as is, also in the order webhooks
+    'items' => [['type' => 'digital', 'name' => 'Credit', 'unit' => 'onetime', 'units' => 1, 'gross_price' => '10.00']],
+])->data;
+
+return redirect()->away($order->confirmation_url);
+// later: https://console.test/billing/topup/done?status=completed&order=01K…
+```
+
+`confirm` needs `items` and can't be combined with `checkout` or a `transaction` (422). The draft
+expires after 24 hours (`expires_at`): it is cancelled, `confirmation_url` becomes null and
+`checkout()` answers 409 `confirmation_expired`. Follow the order through its webhooks:
+`order.created`, then `order.completed` once paid (`order.payment_failed` for a declined charge)
+or `order.cancelled` when the user declines or it expires. `return_url` and `metadata` work for
+every order, also with the user's token (`$user->orders()->create([...])`).
+
 ### Changing running subscriptions (trusted apps)
 
 `update()` changes a subscription before its checkout (afterwards only the description).
