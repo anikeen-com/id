@@ -11,7 +11,6 @@ class ScopeTest extends TestCase
     public static function newScopes(): array
     {
         return [
-            'products' => [Scope::PRODUCTS, 'products'],
             'products:read' => [Scope::PRODUCTS_READ, 'products:read'],
             'reseller-customers' => [Scope::RESELLER_CUSTOMERS, 'reseller-customers'],
             'reseller-customers:read' => [Scope::RESELLER_CUSTOMERS_READ, 'reseller-customers:read'],
@@ -24,6 +23,12 @@ class ScopeTest extends TestCase
     public function test_the_product_and_reseller_scopes_have_their_names(string $constant, string $expected): void
     {
         $this->assertSame($expected, $constant);
+    }
+
+    public function test_there_is_no_full_products_scope_the_console_would_not_accept(): void
+    {
+        // the Console's product APIs accept `user`, `user:read` and `products:read` only
+        $this->assertNotContains('products', (new ReflectionClass(Scope::class))->getConstants());
     }
 
     public function test_every_scope_follows_the_resource_and_level_schema(): void

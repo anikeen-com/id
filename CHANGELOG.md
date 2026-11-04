@@ -2,8 +2,8 @@
 
 ## 3.1.0 (unreleased)
 
-- Add the scopes `products` and `products:read` (`Scope::PRODUCTS`, `Scope::PRODUCTS_READ`) for the
-  product APIs of the Anikeen Console.
+- Add the scope `products:read` (`Scope::PRODUCTS_READ`) for read-only access to the product APIs
+  of the Anikeen Console.
 - Add the reseller scopes `reseller-customers:read`, `reseller-customers`, `reseller-grants` and
   `reseller-orders` (`Scope::RESELLER_CUSTOMERS_READ`, `Scope::RESELLER_CUSTOMERS`,
   `Scope::RESELLER_GRANTS`, `Scope::RESELLER_ORDERS`) for the reseller API of the Anikeen Console.

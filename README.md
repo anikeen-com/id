@@ -172,14 +172,14 @@ these scopes for its product and reseller APIs:
 | Scope | Constant | Grants |
 |-------|----------|--------|
 | `products:read` | `Scope::PRODUCTS_READ` | view the products of your teams |
-| `products` | `Scope::PRODUCTS` | full access to the products of your teams |
 | `reseller-customers:read` | `Scope::RESELLER_CUSTOMERS_READ` | view a reseller team's customers and invitations |
 | `reseller-customers` | `Scope::RESELLER_CUSTOMERS` | manage customers: invite, resend, remove logins (includes reading) |
 | `reseller-grants` | `Scope::RESELLER_GRANTS` | grant customers access to products and revoke it |
 | `reseller-orders` | `Scope::RESELLER_ORDERS` | order products for customers, charged right away |
 
-A full scope includes reading. `user` and `*` do not open the reseller endpoints: the token has to
-carry the reseller scope itself.
+A full reseller scope includes reading. `user` and `*` do not open the reseller endpoints: the
+token has to carry the reseller scope itself. For the product APIs there is only `products:read`;
+changing products needs `user`.
 
 ### Change the default access token / refresh token field name
 

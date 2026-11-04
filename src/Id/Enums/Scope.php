@@ -36,8 +36,8 @@ class Scope
     const SSH_KEYS = 'ssh-keys';
     const SSH_KEYS_READ = 'ssh-keys:read';
 
-    // Products of the Anikeen Console (servers, floating IPs, hosting, domains, zones, object storage).
-    const PRODUCTS = 'products';
+    // Products of the Anikeen Console (servers, floating IPs, hosting, domains, zones, object storage),
+    // read-only. Changing products needs `user`; there is no full `products` scope.
     const PRODUCTS_READ = 'products:read';
 
     // Reseller API of the Anikeen Console. A full scope includes reading; `user` and `*` do not
