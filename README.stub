@@ -237,6 +237,43 @@ instead of trusting the query string. Subscriptions work the same way
 (`$user->subscriptions()->create([...])->confirmationUrl(...)`, `&subscription=…`).
 Unconfirmed bookings are cancelled after 24 hours.
 
+Physical goods need a shipping address (`first_name`, `last_name`, `address`, `postal_code`,
+`city`, `country_iso`). The user can change both addresses on the confirmation page, so read the
+shipping address from the order (or the `order.completed` webhook) before you ship. An item's
+`image_url` is copied to Anikeen ID and stays visible on the order and invoice:
+
+```php
+$order = $user->orders()->create([
+    'billing_address_id' => $addressId,
+    'shipping_address' => ['first_name' => 'Ada', 'last_name' => 'Lovelace', 'address' => 'Main St', 'house_number' => '1', 'postal_code' => '10115', 'city' => 'Berlin', 'country_iso' => 'DE'],
+    'items' => [
+        ['type' => 'physical', 'name' => 'T-shirt', 'unit' => 'piece', 'units' => 1, 'gross_price' => '24.90', 'image_url' => 'https://shop.test/img/shirt.png'],
+        ['type' => 'physical-reduced', 'name' => 'Artbook', 'unit' => 'piece', 'units' => 1, 'gross_price' => '19.95'],
+    ],
+]);
+```
+
+Once a paid order is sent, create a shipment. Anikeen ID adds its delivery note to the user's
+order documents (with the tracking link), mails it to the user (`'notify_customer' => false` if
+your shop sends its own mail) and sends `order.shipped` to your webhook endpoints.
+Without `items`, everything physical that is left is shipped; partial deliveries name the items:
+
+```php
+$order = $user->orders()->find($orderId);
+
+$shipment = $order->shipments()->create([
+    'carrier' => 'DHL',
+    'tracking_number' => '00340434161234567890',
+    'tracking_url' => 'https://www.dhl.de/…?piececode=00340434161234567890',
+    // 'items' => [['order_item_id' => $itemId, 'units' => 1]],
+]);
+
+$shipment->number;          // LS-2026-0001
+$shipment->deliveryNote();  // the delivery note as PDF
+```
+
+Only the app that created the order (or a trusted app) can ship it, and only once it is paid.
+
 `checkout()` on such a draft throws `ConfirmationRequiredException`; its `confirmationUrl`
 points to the same page. Trusted apps keep checking out directly.
 
@@ -480,10 +517,6 @@ AnikeenId::withClientId('abc123')->withToken('abcdef123456')->getAuthedUser();
 
 ```shell
 composer test
-```
-
-```shell
-BASE_URL=xxxx CLIENT_ID=xxxx CLIENT_KEY=yyyy CLIENT_ACCESS_TOKEN=zzzz composer test
 ```
 
 #### Generate Documentation

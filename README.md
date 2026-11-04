@@ -688,10 +688,6 @@ public function getBillable(): Billable
 composer test
 ```
 
-```shell
-BASE_URL=xxxx CLIENT_ID=xxxx CLIENT_KEY=yyyy CLIENT_ACCESS_TOKEN=zzzz composer test
-```
-
 #### Generate Documentation
 
 ```shell
