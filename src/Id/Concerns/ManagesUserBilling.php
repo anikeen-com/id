@@ -2,9 +2,11 @@
 
 namespace Anikeen\Id\Concerns;
 
+use Anikeen\Id\Exceptions\ApiException;
 use Anikeen\Id\Resources\AppCheckoutSessions;
 use Anikeen\Id\Resources\AppOrders;
 use Anikeen\Id\Result;
+use Anikeen\Id\Support\AppRequest;
 use Throwable;
 
 /**
@@ -27,6 +29,35 @@ trait ManagesUserBilling
     public function appCheckoutSessions(): AppCheckoutSessions
     {
         return new AppCheckoutSessions();
+    }
+
+    /**
+     * A short-lived link to a user's billing pages on Anikeen ID, e.g. for a "Manage billing"
+     * button of an app that bills another user's account (a team owner) without that user's
+     * token (trusted apps, scope subscriptions:client or orders:client). The link is signed and
+     * valid for about 15 minutes: create it when the user clicks, don't store it. It doesn't sign
+     * anyone in; the pages then show only what bills the app's subscriptions (of the group) and
+     * lead back to return_url.
+     *
+     * @param string $userId The user's Anikeen ID.
+     * @param array{
+     *     return_url?: null|string,
+     *     group?: null|string,
+     *     flow?: null|string
+     * } $attributes return_url: "Back to the app" (same origin as one of the app's redirect URIs,
+     *               422 otherwise).
+     *               group: only this group's subscriptions and the orders, invoices and
+     *               transactions billing them.
+     *               flow: overview (default), payment_method, payment_method_update (straight to
+     *               replacing the payment method, e.g. after a failed payment), invoices,
+     *               subscriptions or orders.
+     * @return object {object: "billing_portal_link", url, user_id, flow, group, return_url, expires_at}
+     *
+     * @throws ApiException 403 untrusted app or missing scope, 404 unknown user, 422 validation
+     */
+    public function createBillingPortalLinkForUser(string $userId, array $attributes = []): object
+    {
+        return AppRequest::send('POST', sprintf('v1/client/users/%s/billing-portal', $userId), $attributes)->data;
     }
 
     /**

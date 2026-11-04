@@ -2,6 +2,8 @@
 
 namespace Anikeen\Id\Concerns;
 
+use Anikeen\Id\AnikeenId;
+use Anikeen\Id\Exceptions\ApiException;
 use Anikeen\Id\Resources\AppCheckoutSessions;
 use Anikeen\Id\Resources\AppOrders;
 use Anikeen\Id\Resources\AppSubscriptions;
@@ -64,5 +66,20 @@ trait ManagesSubscriptions
     public function appOrders(): AppOrders
     {
         return new AppOrders($this);
+    }
+
+    /**
+     * A short-lived link to the user's billing pages on Anikeen ID, created with the app's own
+     * token (trusted apps only, scope subscriptions:client or orders:client), e.g. for a "Manage
+     * billing" button; see AnikeenId::createBillingPortalLinkForUser() for the attributes
+     * (return_url, group, flow). Create it when the user clicks, it expires after about 15 minutes.
+     *
+     * @param array{return_url?: null|string, group?: null|string, flow?: null|string} $attributes
+     *
+     * @throws ApiException
+     */
+    public function appBillingPortalUrl(array $attributes = []): string
+    {
+        return app(AnikeenId::class)->createBillingPortalLinkForUser($this->appSubscriptions()->userId(), $attributes)->url;
     }
 }

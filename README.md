@@ -688,6 +688,33 @@ before the order is paid and 409 `invoice_not_ready` while the PDF is still bein
 (usually seconds after the payment; try again later). A collective order can also bill
 subscriptions of other apps of the same user and group.
 
+### Billing portal links (trusted apps)
+
+A "Manage billing" button for a user whose token your app doesn't have (e.g. the owner of a team
+your app bills): create a short-lived link to the user's billing pages on Anikeen ID with the
+app's token (scope `subscriptions:client` or `orders:client`):
+
+```php
+Route::post('teams/{team}/billing', function (Team $team) {
+    return redirect()->away($team->owner->appBillingPortalUrl([
+        'return_url' => route('teams.show', $team), // "Back to <app>"; same origin as one of your redirect URIs
+        'group' => $team->id,                       // only this group's subscriptions, orders and invoices
+        'flow' => 'invoices',                       // overview (default), payment_method, payment_method_update,
+                                                    // invoices, subscriptions or orders
+    ]));
+});
+
+app(AnikeenId::class)->createBillingPortalLinkForUser($userId, ['flow' => 'payment_method_update']);
+// {object: "billing_portal_link", url, user_id, flow, group, return_url, expires_at}
+```
+
+The link is signed and valid for about 15 minutes, so create it when the user clicks and don't
+store it. It doesn't sign anyone in: the user logs in as usual and then sees only what bills your
+app's subscriptions (of the `group`), with "Back to *app*" and "Show everything".
+`payment_method_update` leads straight to replacing the payment method (e.g. after a failed
+payment) and back to `return_url`. For the signed-in user with their own token,
+`$user->billingPortalUrl()` stays available.
+
 ### Checkout sessions (the user confirms several subscriptions at once)
 
 Instead of checking subscriptions out itself, an app can let the user confirm them on Anikeen ID,
@@ -941,6 +968,7 @@ public function shippingPriceList(): Result
 ```php
 public function appOrders(): AppOrders
 public function appCheckoutSessions(): AppCheckoutSessions
+public function createBillingPortalLinkForUser(string $userId, array $attributes = []): object
 public function createOrderForUser(string $userId, array $attributes): Result
 public function createTransactionForUser(string $userId, array $attributes): Result
 ```
@@ -1046,6 +1074,7 @@ public function appSubscriptions(): AppSubscriptions
 public function appCheckoutSessions(): AppCheckoutSessions
 public function checkoutSessions(): CheckoutSessions
 public function appOrders(): AppOrders
+public function appBillingPortalUrl(array $attributes = []): string
 public function setBillable(Billable|Model $billable): self
 public function getBillable(): Billable
 ```

@@ -4,6 +4,7 @@ namespace Anikeen\Id\Tests;
 
 use Anikeen\Id\AnikeenId;
 use Anikeen\Id\Billable;
+use Anikeen\Id\Exceptions\ApiException;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -197,6 +198,35 @@ class EndpointsTest extends TestCase
         $this->assertSame('POST /api/v1/admin/orders Bearer app-token', $this->sentCall(0));
         $this->assertSame('01JUSER', $this->sentJson(0)['user_id']);
         $this->assertSame('POST /api/v1/admin/transactions Bearer app-token', $this->sentCall(1));
+    }
+
+    public function test_billing_portal_links_for_users_use_the_app_token(): void
+    {
+        $link = ['object' => 'billing_portal_link', 'url' => 'https://id.test/billing/portal/01JUSER?signature=x', 'user_id' => '01JUSER', 'flow' => 'invoices', 'group' => 'team-1', 'return_url' => 'https://console.test/billing', 'expires_at' => '2026-11-04T10:15:00+00:00'];
+        $this->respond(201, ['data' => $link]);
+        $this->respond(201, ['data' => $link]);
+
+        $created = app(AnikeenId::class)->createBillingPortalLinkForUser('01JUSER', ['return_url' => 'https://console.test/billing', 'group' => 'team-1', 'flow' => 'invoices']);
+        $url = $this->owner()->appBillingPortalUrl(['flow' => 'payment_method_update']);
+
+        $this->assertSame('billing_portal_link', $created->object);
+        $this->assertSame($link['url'], $url);
+        $this->assertSame('POST /api/v1/client/users/01JUSER/billing-portal Bearer app-token', $this->sentCall(0));
+        $this->assertSame(['return_url' => 'https://console.test/billing', 'group' => 'team-1', 'flow' => 'invoices'], $this->sentJson(0));
+        $this->assertSame('POST /api/v1/client/users/01JUSER/billing-portal Bearer app-token', $this->sentCall(1));
+        $this->assertSame(['flow' => 'payment_method_update'], $this->sentJson(1));
+    }
+
+    public function test_a_refused_billing_portal_link_is_an_api_exception(): void
+    {
+        $this->respond(422, ['message' => 'The return URL has to point to one of the app\'s redirect URIs.', 'errors' => ['return_url' => ['…']]]);
+
+        try {
+            $this->owner()->appBillingPortalUrl(['return_url' => 'https://elsewhere.test']);
+            $this->fail('Expected an ApiException.');
+        } catch (ApiException $e) {
+            $this->assertSame(422, $e->status);
+        }
     }
 
     public function test_order_preview_maps_the_country_into_the_billing_address(): void
