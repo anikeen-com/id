@@ -414,6 +414,9 @@ try {
 ### Testing
 
 Develop against staging (`ANIKEEN_ID_MODE=staging`) with an OAuth client registered there.
+Payments on staging run in Stripe's test mode: pay with Stripe's
+[test cards](https://docs.stripe.com/testing), e.g. `4242 4242 4242 4242` with any future expiry
+date and any CVC. No money is charged.
 Point `ANIKEEN_ID_BASE_URL` at your own Anikeen ID instance if you run one locally.
 
 In unit tests, swap the HTTP client for a Guzzle `MockHandler`:
