@@ -36,5 +36,16 @@ class Scope
     const SSH_KEYS = 'ssh-keys';
     const SSH_KEYS_READ = 'ssh-keys:read';
 
+    // Products of the Anikeen Console (servers, floating IPs, hosting, domains, zones, object storage).
+    const PRODUCTS = 'products';
+    const PRODUCTS_READ = 'products:read';
+
+    // Reseller API of the Anikeen Console. A full scope includes reading; `user` and `*` do not
+    // open these endpoints, a token must carry the reseller scope itself.
+    const RESELLER_CUSTOMERS = 'reseller-customers';
+    const RESELLER_CUSTOMERS_READ = 'reseller-customers:read';
+    const RESELLER_GRANTS = 'reseller-grants';
+    const RESELLER_ORDERS = 'reseller-orders';
+
     const ADMIN = 'admin';
 }
