@@ -383,9 +383,49 @@ $subscription = $user->subscriptions()->create([
 ```
 
 A few days before the trial ends, Anikeen ID sends `subscription.trial_will_end`
-(`EventType::SUBSCRIPTION_TRIAL_WILL_END`), e.g. to remind the user. Cancelling during the trial
+(`EventType::SUBSCRIPTION_TRIAL_WILL_END`), e.g. to remind the user; `data.payment_method_missing`
+tells you whether the user still has to add a payment method. Cancelling during the trial
 bills nothing. Trials work the same for app subscriptions and per subscription of a checkout
 session.
+
+By default the user needs a payment method to confirm a trial. With `trial_payment_method`
+`TrialPaymentMethod::OPTIONAL` (only together with a trial; `TrialPaymentMethod::REQUIRED` is the
+default) the user can confirm it without one, as long as nothing else has to be paid: in a
+checkout session every subscription has to be such a trial. The confirmation page tells the user
+to add a payment method before the trial ends. If there is still none then, the subscription is
+**cancelled** at the trial's end instead of billed: `status` `cancelled`, `cancellation_reason`
+`CancellationReason::TRIAL_ENDED_WITHOUT_PAYMENT_METHOD`, `subscription.cancelled` with
+`data.reason` set to the same value, and no `subscription.renewed`. Adding a payment method later
+doesn't bring it back – create a new subscription. The trial still counts for `trial_once`.
+Anikeen ID also mails the user a few days before such a trial ends without a payment method.
+
+```php
+use Anikeen\Id\Enums\CancellationReason;
+use Anikeen\Id\Enums\TrialPaymentMethod;
+use Anikeen\Id\Webhooks\EventType;
+
+$subscription = $user->appSubscriptions()->create([
+    'group' => $teamId,
+    'name' => 'Uptimr Pro',
+    'unit' => 'month',
+    'price' => 19.00,
+    'trial_days' => 14,
+    'trial_payment_method' => TrialPaymentMethod::OPTIONAL,
+]);
+
+// in your webhook handler
+$data = $event['data'];
+
+match ($event['type']) {
+    EventType::SUBSCRIPTION_TRIAL_WILL_END => $data['payment_method_missing']
+        ? Reminder::addPaymentMethod($data['object']['id'])
+        : null,
+    EventType::SUBSCRIPTION_CANCELLED => $data['reason'] === CancellationReason::TRIAL_ENDED_WITHOUT_PAYMENT_METHOD
+        ? Pass::downgrade($data['object']['id'])
+        : Pass::revoke($data['object']['id']),
+    default => null,
+};
+```
 
 #### Discounts
 

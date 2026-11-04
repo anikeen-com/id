@@ -4,6 +4,8 @@ namespace Anikeen\Id\Tests;
 
 use Anikeen\Id\AnikeenId;
 use Anikeen\Id\Billable;
+use Anikeen\Id\Enums\CancellationReason;
+use Anikeen\Id\Enums\TrialPaymentMethod;
 use Anikeen\Id\Exceptions\ApiException;
 use Anikeen\Id\Resources\AppSubscription;
 use GuzzleHttp\Exception\ConnectException;
@@ -186,6 +188,21 @@ class AppSubscriptionsTest extends TestCase
         $this->assertSame(['group' => 'team-1', 'name' => 'Pro', 'unit' => 'month', 'price' => '9.99', 'trial_days' => 14, 'trial_once' => true, 'user_id' => '01JUSER'], $this->sentJson(0));
         $this->assertTrue($subscription->isTrial());
         $this->assertTrue($subscription->isActive());
+    }
+
+    public function test_a_trial_can_be_confirmed_without_a_payment_method_and_end_cancelled(): void
+    {
+        $this->respond(201, $this->subscription(['trial_days' => 14, 'trial_payment_method' => 'optional']));
+        $this->respond(200, $this->subscription(['active' => false, 'cancelled' => true, 'status' => 'cancelled', 'starts_at' => '2026-11-04T10:00:00+00:00', 'trial_ends_at' => '2026-11-18T10:00:00+00:00', 'cancels_at' => '2026-11-18T10:00:00+00:00', 'trial_payment_method' => 'optional', 'cancellation_reason' => 'trial_ended_without_payment_method']));
+
+        $subscription = $this->owner()->appSubscriptions()->create(['name' => 'Pro', 'unit' => 'month', 'price' => '9.99', 'trial_days' => 14, 'trial_payment_method' => TrialPaymentMethod::OPTIONAL]);
+
+        $this->assertSame('optional', $this->sentJson(0)['trial_payment_method']);
+        $this->assertSame(TrialPaymentMethod::OPTIONAL, $subscription->trial_payment_method);
+
+        $ended = $this->owner()->appSubscriptions()->find('01JSUB');
+        $this->assertTrue($ended->isCancelled());
+        $this->assertSame(CancellationReason::TRIAL_ENDED_WITHOUT_PAYMENT_METHOD, $ended->cancellation_reason);
     }
 
     public function test_a_used_trial_is_refused_on_checkout(): void

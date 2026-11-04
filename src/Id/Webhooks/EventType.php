@@ -18,10 +18,15 @@ final class EventType
     public const SUBSCRIPTION_ACTIVATED = 'subscription.activated';
     public const SUBSCRIPTION_PAUSED = 'subscription.paused';
     public const SUBSCRIPTION_RESUMED = 'subscription.resumed';
+    /** `data.reason`: why the billing cancelled it (CancellationReason, e.g. a trial that ended without a payment method), else null. */
     public const SUBSCRIPTION_CANCELLED = 'subscription.cancelled';
     public const SUBSCRIPTION_EXPIRED = 'subscription.expired';
 
-    /** The free trial of a running subscription ends in a few days (see trial_ends_at); billing starts then. */
+    /**
+     * The free trial of a running subscription ends in a few days (see trial_ends_at); billing
+     * starts then. `data.payment_method_missing`: the user has no payment method yet (with
+     * trial_payment_method `optional` the subscription then ends with the trial).
+     */
     public const SUBSCRIPTION_TRIAL_WILL_END = 'subscription.trial_will_end';
 
     /** The last discounted period of a subscription was billed; the following ones are billed at the full price. */
