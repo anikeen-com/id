@@ -7,6 +7,7 @@ use Anikeen\Id\Exceptions\CollectionException;
 use Anikeen\Id\Helpers\Paginator;
 use Anikeen\Id\Result;
 use Closure;
+use GuzzleHttp\Exception\GuzzleException;
 use GuzzleHttp\Psr7\Response;
 use JsonSerializable;
 use Throwable;
@@ -34,10 +35,15 @@ abstract class BaseCollection implements JsonSerializable
      */
     protected function __construct(callable $callable)
     {
-        $this->result = $callable();
+        try {
+            $this->result = $callable();
+        } catch (GuzzleException $e) {
+            // no response at all (connection refused, timeout)
+            throw CollectionException::unreachable($e);
+        }
 
         if (!$this->result->success()) {
-            throw new CollectionException(sprintf('%s for collection [%s]', rtrim($this->result->data->message, '.'), get_called_class()), $this->result->response->getStatusCode());
+            throw CollectionException::fromResult($this->result);
         }
     }
 
