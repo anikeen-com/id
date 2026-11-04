@@ -387,6 +387,37 @@ A few days before the trial ends, Anikeen ID sends `subscription.trial_will_end`
 bills nothing. Trials work the same for app subscriptions and per subscription of a checkout
 session.
 
+#### Discounts
+
+A `discount` (e.g. a coupon) lowers the price of billed periods: every discounted period gets a
+negative line with the `label` next to its usage on the same bill, until the discount ends.
+
+```php
+$subscription = $user->subscriptions()->create([
+    'name' => 'Pixel Stream Pass',
+    'unit' => 'month',
+    'price' => 6.714286,
+    'discount' => [
+        'label' => 'SUMMER20',         // shown to the user, e.g. the coupon code
+        'percent_off' => 20,           // or 'amount_off' => 1.50 (net, per period)
+        'duration' => 'repeating',     // once, repeating or forever
+        'duration_in_periods' => 3,    // only for repeating
+    ],
+]);
+
+$subscription->discount;               // {label, percent_off, amount_off, duration, duration_in_periods, periods_remaining}
+```
+
+A period is one unit of the subscription (a month for monthly prices). A free trial isn't a
+billed period: the discount starts with the first paid one. `periods_remaining` counts down with
+every billed period (null for `forever`, 0 once it ended); then `subscription.discount_ended`
+(`EventType::SUBSCRIPTION_DISCOUNT_ENDED`) is sent. A discount can't be combined with a
+`monthly_cap`. It is set when the subscription is created (app subscriptions and checkout
+sessions alike) and changed afterwards with
+[`change()`](#changing-running-subscriptions-trusted-apps). A resize (`predecessor_id`) doesn't
+carry it over: send the successor the rest (`'duration' => 'repeating'`,
+`'duration_in_periods' => $old->discount->periods_remaining`).
+
 ### Webhooks
 
 Anikeen ID sends `order.*`, `subscription.*` and `checkout.*` events to the webhook endpoints of

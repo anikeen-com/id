@@ -203,6 +203,18 @@ class AppSubscriptionsTest extends TestCase
         }
     }
 
+    public function test_a_subscription_is_created_with_a_discount(): void
+    {
+        $discount = ['label' => 'SUMMER20', 'percent_off' => 20, 'duration' => 'repeating', 'duration_in_periods' => 3];
+        $this->respond(201, $this->subscription(['discount' => [...$discount, 'amount_off' => null, 'periods_remaining' => 3]]));
+
+        $subscription = $this->owner()->appSubscriptions()->create(['name' => 'Pro', 'unit' => 'month', 'price' => '9.99', 'discount' => $discount]);
+
+        $this->assertSame($discount, $this->sentJson(0)['discount']);
+        $this->assertSame('SUMMER20', $subscription->discount->label);
+        $this->assertSame(3, $subscription->discount->periods_remaining);
+    }
+
     public function test_a_missing_user_id_is_reported(): void
     {
         $this->expectException(InvalidArgumentException::class);

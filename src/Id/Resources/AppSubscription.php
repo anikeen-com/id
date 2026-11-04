@@ -28,6 +28,7 @@ use JsonSerializable;
  * @property ?string $status draft, trial, active, paused, cancelling, expired or cancelled, see status()
  * @property ?string $cancels_at when a scheduled cancellation takes effect
  * @property ?string $trial_ends_at
+ * @property ?object $discount {label, percent_off, amount_off, duration, duration_in_periods, periods_remaining}; periods_remaining is null for `forever`, 0 once it ended
  * @property ?string $starts_at
  * @property ?string $ends_at
  * @property ?string $accounting_at

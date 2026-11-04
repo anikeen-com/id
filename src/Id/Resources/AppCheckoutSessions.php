@@ -39,7 +39,8 @@ class AppCheckoutSessions
      *         ends_at?: null|string,
      *         trial_days?: null|int,
      *         trial_ends_at?: null|string,
-     *         trial_once?: bool
+     *         trial_once?: bool,
+     *         discount?: null|array{label: string, percent_off?: float|string, amount_off?: float|string, duration: string, duration_in_periods?: int}
      *     }>,
      *     return_url?: null|string,
      *     metadata?: null|array,
@@ -50,6 +51,7 @@ class AppCheckoutSessions
      *               repeated idempotency_key returns the first session instead of a new one.
      *               trial_days / trial_ends_at give a subscription a free trial from the user's
      *               confirmation on; trial_once is allowed on one subscription per group.
+     *               discount: see AppSubscriptions::create(); the confirmation page shows it.
      *
      * @throws ApiException 422 validation (e.g. return_url), 409 "idempotency_key_conflict"
      */

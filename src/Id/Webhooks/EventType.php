@@ -24,6 +24,9 @@ final class EventType
     /** The free trial of a running subscription ends in a few days (see trial_ends_at); billing starts then. */
     public const SUBSCRIPTION_TRIAL_WILL_END = 'subscription.trial_will_end';
 
+    /** The last discounted period of a subscription was billed; the following ones are billed at the full price. */
+    public const SUBSCRIPTION_DISCOUNT_ENDED = 'subscription.discount_ended';
+
     /** The user confirmed a checkout session: all of its subscriptions are running (sent after their subscription.activated). */
     public const CHECKOUT_COMPLETED = 'checkout.completed';
 

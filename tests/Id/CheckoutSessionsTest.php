@@ -153,6 +153,18 @@ class CheckoutSessionsTest extends TestCase
         $this->assertSame('2026-12-01T00:00:00+00:00', $this->sentJson(0)['subscriptions'][1]['trial_ends_at']);
     }
 
+    public function test_session_subscriptions_carry_a_discount(): void
+    {
+        $this->respond(201, $this->sessionData());
+
+        $this->owner()->checkoutSessions()->create(['subscriptions' => [
+            ['name' => 'Pro', 'unit' => 'month', 'price' => 4.99, 'discount' => ['label' => 'WELCOME', 'amount_off' => '1.00', 'duration' => 'once']],
+        ]]);
+
+        $this->assertSame('POST /api/v1/checkout-sessions Bearer user-token', $this->request(0));
+        $this->assertSame(['label' => 'WELCOME', 'amount_off' => '1.00', 'duration' => 'once'], $this->sentJson(0)['subscriptions'][0]['discount']);
+    }
+
     public function test_nothing_is_requested_until_a_method_is_called(): void
     {
         $this->owner()->checkoutSessions();
@@ -174,5 +186,6 @@ class CheckoutSessionsTest extends TestCase
         $this->assertContains('checkout.expired', EventType::all());
         $this->assertContains('subscription.activated', EventType::all());
         $this->assertContains('subscription.trial_will_end', EventType::all());
+        $this->assertContains('subscription.discount_ended', EventType::all());
     }
 }
