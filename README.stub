@@ -338,8 +338,31 @@ return redirect()->away($subscription->confirmationUrl(route('pass.return')));
 // later: https://shop.test/pass/return?status=completed&subscription=01J…
 ```
 
-A subscription has `active` (running and paid), `cancelled` and `autorenew` (false once paused).
-After the return, check `$user->subscriptions()->find($id)->active`.
+After the return, read the subscription and check its state:
+
+```php
+$subscription = $user->subscriptions()->find($id);
+
+if ($subscription->isActive()) {
+    // grant access
+}
+```
+
+`status()` returns one of the `Anikeen\Id\Enums\SubscriptionStatus` constants (the API sends the
+same value as `status`):
+
+| `status()` | Meaning | `isActive()` |
+|---|---|---|
+| `draft` | Created, not confirmed by the user yet | no |
+| `trial` | Running, in its trial period | yes |
+| `active` | Running and billed | yes |
+| `paused` | Runs until the paid period ends, then expires (`resume()` to continue) | yes |
+| `cancelling` | Runs until a scheduled cancellation takes effect | yes |
+| `expired` | Paused and ran out; `resume()` starts a new period | no |
+| `cancelled` | Cancelled for good | no |
+
+There are shortcuts for each: `isDraft()`, `isPaused()`, `isCancelling()`, `isExpired()`,
+`isCancelled()`. App subscriptions (`appSubscriptions()`) have the same methods.
 
 ### Webhooks
 

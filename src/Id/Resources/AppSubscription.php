@@ -2,6 +2,7 @@
 
 namespace Anikeen\Id\Resources;
 
+use Anikeen\Id\Concerns\HasSubscriptionStatus;
 use Anikeen\Id\Exceptions\ApiException;
 use Anikeen\Id\Support\AppRequest;
 use DateTimeInterface;
@@ -24,7 +25,9 @@ use JsonSerializable;
  * @property bool $active
  * @property bool $autorenew
  * @property bool $cancelled
- * @property ?string $status "active" or "inactive"
+ * @property ?string $status draft, trial, active, paused, cancelling, expired or cancelled, see status()
+ * @property ?string $cancels_at when a scheduled cancellation takes effect
+ * @property ?string $trial_ends_at
  * @property ?string $starts_at
  * @property ?string $ends_at
  * @property ?string $accounting_at
@@ -36,6 +39,8 @@ use JsonSerializable;
  */
 class AppSubscription implements JsonSerializable
 {
+    use HasSubscriptionStatus;
+
     public function __construct(protected object $data)
     {
     }
