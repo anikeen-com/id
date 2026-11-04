@@ -2,9 +2,10 @@
 
 namespace Anikeen\Id\Resources;
 
+use Anikeen\Id\Exceptions\ApiException;
 use Anikeen\Id\Exceptions\ConfirmationRequiredException;
-use Anikeen\Id\Exceptions\ResourceException;
 use Anikeen\Id\Result;
+use GuzzleHttp\Exception\GuzzleException;
 use JsonSerializable;
 
 #[\AllowDynamicProperties]
@@ -13,11 +14,17 @@ abstract class BaseResource implements JsonSerializable
     public Result $result;
 
     /**
-     * @throws ResourceException
+     * @throws ApiException the request failed (status, error code; a ResourceException)
+     * @throws ConfirmationRequiredException the user has to confirm it on Anikeen ID
      */
     public function __construct(callable $callable)
     {
-        $this->result = $callable();
+        try {
+            $this->result = $callable();
+        } catch (GuzzleException $e) {
+            // no response at all (connection refused, timeout)
+            throw ApiException::unreachable($e);
+        }
 
         if (!$this->result->success()) {
             if (($this->result->data->error ?? null) === 'confirmation_required') {
@@ -28,7 +35,7 @@ abstract class BaseResource implements JsonSerializable
                 );
             }
 
-            throw new ResourceException(sprintf('%s for resource [%s]', rtrim($this->result->data->message, '.'), get_called_class()), $this->result->response->getStatusCode());
+            throw ApiException::fromResult($this->result);
         }
 
         foreach ($this->result->data as $key => $value) {

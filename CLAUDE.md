@@ -30,13 +30,13 @@ CI (`.github/workflows/tests.yml`) runs PHPUnit on PHP 8.3 and 8.4.
   attributes and break `save()`). Add a new cache property there when a concern caches.
 - `src/Id/Concerns/` – one trait per API area. Traits on `AnikeenId` act as the app/client;
   traits on `Billable` act for one user.
-- `src/Id/Resources/` – `BaseResource` (single object, throws `ResourceException`, or
-  `ConfirmationRequiredException` for `confirmation_required`) and `BaseCollection` (lists,
-  lazily built via `::builder()`).
+- `src/Id/Resources/` – `BaseResource` (single object) and `BaseCollection` (lists, built via
+  `::builder()`). Failed requests throw `ApiException::fromResult()` (`CollectionException` for
+  lists), no response `::unreachable()`, `confirmation_required` a `ConfirmationRequiredException`.
+  All extend `ResourceException`.
 - `src/Id/Resources/App*` – "app" variants that use the app's own client-credentials token
   (`AnikeenId::asApp()`, `Support/AppRequest`) instead of the user's token, for trusted apps.
-  They throw `Exceptions/ApiException` with a stable `error` code and must not send any request
-  until a method is called.
+  They must not send any request until a method is called.
 - `src/Id/Auth/`, `Providers/AnikeenIdServiceProvider.php`, `Http/Middleware/` – the `anikeen`
   guard driver and user provider, JWT validation (`Helpers/JwtParser.php` with the bundled
   `oauth-public*.key`), scope middleware.

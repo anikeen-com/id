@@ -417,22 +417,36 @@ object through the API when the current state matters. The admin panel can send 
 
 ### Errors
 
-Calls with the user's token throw `Anikeen\Id\Exceptions\ResourceException` when Anikeen ID
-rejects them; `getCode()` is the HTTP status (e.g. `422` for invalid data, `404` for an unknown
-ID) and `getMessage()` the reason. App calls (`app*()`) throw its subclass `ApiException`, which
-adds a stable `error` code. Catching `ResourceException` covers both:
+Every failed request throws `Anikeen\Id\Exceptions\ApiException`, with the user's token as
+well as with the app's (`app*()`). It carries:
+
+- `status`: the HTTP status (also `getCode()`), `0` when Anikeen ID could not be reached,
+- `error`: a stable error code when Anikeen ID sent one (e.g. `billing_address_missing`,
+  `already_cancelled`), otherwise `null`,
+- `getMessage()`: Anikeen ID's reason,
+- `isNotFound()` (404), `isConflict()` (409) and `isTemporary()` (no response, 429 or 5xx: retry
+  later).
 
 ```php
-use Anikeen\Id\Exceptions\ResourceException;
+use Anikeen\Id\Exceptions\ApiException;
 
 try {
     $order = $user->orders()->create($attributes);
-} catch (ResourceException $e) {
+} catch (ApiException $e) {
+    if ($e->isTemporary()) {
+        return back()->with('error', 'Anikeen ID is not reachable right now, please try again.');
+    }
+
     report($e);
 
-    return back()->with('error', 'The order could not be created.');
+    return back()->with('error', $e->getMessage());
 }
 ```
+
+Failed lists (`$user->invoices()`, …) throw `CollectionException`, a subclass of `ApiException`.
+`ConfirmationRequiredException` (a third-party app called `checkout()`, see above) stays its own
+type. All of them extend `ResourceException`, so existing `catch (ResourceException $e)` blocks
+keep working.
 
 ### Testing
 
@@ -700,7 +714,7 @@ $user = $result->shift(); // the object, or the first item of a list
 ```
 
 Resource methods (`$user->orders()`, `$anikeenId->sshKeysByUserId()`, …) return objects and throw
-`ResourceException` instead (see [Errors](#errors)).
+`ApiException` instead (see [Errors](#errors)).
 
 ## Examples
 
