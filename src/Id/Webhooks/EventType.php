@@ -34,8 +34,10 @@ final class EventType
     public const SUBSCRIPTION_UPDATED = 'subscription.updated';
 
     /**
-     * A new period of a running subscription was booked on its collective order; `data.period`
-     * describes it. Opt-in: only endpoints that select this event get it (not through `*`).
+     * A period of a subscription was booked on its collective order, the first one included;
+     * `data.period` describes it, `data.period.first_period` is true for the subscription's first
+     * paid period (checkout or the end of a free trial). Opt-in: only endpoints that select this
+     * event get it (not through `*`).
      */
     public const SUBSCRIPTION_RENEWED = 'subscription.renewed';
 

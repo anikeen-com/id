@@ -469,11 +469,22 @@ arrive more than once or out of order: use `$event['id']` to skip duplicates, an
 object through the API when the current state matters. The admin panel can send a
 `webhook.test` event to check your endpoint.
 
-`subscription.renewed` (`EventType::SUBSCRIPTION_RENEWED`) is sent for every period after the
-first that was booked on the user's monthly order, with `$event['data']['period']`:
-`{subscription_id, period_start, period_end, periods, unit, order_id, order_item_id, items,
-currency_iso, net_amount}` (`net_amount` after a discount). Hourly subscriptions renew every hour,
-so this event is **opt-in**: select it explicitly for your endpoint, `*` doesn't include it.
+`subscription.renewed` (`EventType::SUBSCRIPTION_RENEWED`) is sent once for every period booked
+on the user's monthly order, **the first one included**, with `$event['data']['period']`:
+`{subscription_id, period_start, period_end, periods, first_period, unit, order_id, order_item_id,
+items, currency_iso, net_amount}` (`net_amount` after a discount). `first_period` is `true` for the
+subscription's first paid period (the checkout, sent after `subscription.activated`, or the first
+period after a free trial) and `false` for every later one (renewals, resuming an expired
+subscription, a unit change applied right away). Hourly subscriptions renew every hour, so this
+event is **opt-in**: select it explicitly for your endpoint, `*` doesn't include it.
+
+```php
+if ($event['type'] === EventType::SUBSCRIPTION_RENEWED) {
+    $period = $event['data']['period'];
+    // e.g. a commission per paid period; the first one may count differently
+    Commission::record($period['subscription_id'], $period['net_amount'], first: $period['first_period']);
+}
+```
 `order.*` events list the order's `items` and `invoice` like
 [app orders](#app-orders-trusted-apps-no-user-token).
 
@@ -691,8 +702,9 @@ subscriptions of other apps of the same user and group.
 ### Billing portal links (trusted apps)
 
 A "Manage billing" button for a user whose token your app doesn't have (e.g. the owner of a team
-your app bills): create a short-lived link to the user's billing pages on Anikeen ID with the
-app's token (scope `subscriptions:client` or `orders:client`):
+your app bills): create a link to the user's billing pages on Anikeen ID with the app's token
+(scope `subscriptions:client` or `orders:client`). Like Stripe's customer portal, it works
+**without a login**:
 
 ```php
 Route::post('teams/{team}/billing', function (Team $team) {
@@ -708,9 +720,13 @@ app(AnikeenId::class)->createBillingPortalLinkForUser($userId, ['flow' => 'payme
 // {object: "billing_portal_link", url, user_id, flow, group, return_url, expires_at}
 ```
 
-The link is signed and valid for about 15 minutes, so create it when the user clicks and don't
-store it. It doesn't sign anyone in: the user logs in as usual and then sees only what bills your
-app's subscriptions (of the `group`), with "Back to *app*" and "Show everything".
+The link is **single use** and valid for about 15 minutes: create it when the user clicks and
+redirect right away; don't store, mail or reuse it (a second request with the same link, e.g. a
+reload, gets a 403). Opening it starts a portal session for that user that needs no login and
+signs nobody in: only the billing pages of the `flow`, only what bills your app's subscriptions
+(of the `group`), with "Back to *app*". The user's account settings, other apps and OAuth consent
+stay behind the normal login; signed in as another account, the portal still shows only the
+link's user. The session ends after an hour without activity or on "Back to *app*".
 `payment_method_update` leads straight to replacing the payment method (e.g. after a failed
 payment) and back to `return_url`. For the signed-in user with their own token,
 `$user->billingPortalUrl()` stays available.

@@ -59,13 +59,14 @@ class WebhookTest extends TestCase
     {
         $this->payload = json_encode(['id' => '01JEVT', 'type' => EventType::SUBSCRIPTION_RENEWED, 'created' => time(), 'data' => [
             'object' => ['id' => '01JSUB', 'status' => 'active'],
-            'period' => ['object' => 'subscription_period', 'subscription_id' => '01JSUB', 'period_start' => '2026-11-01T00:00:00+00:00', 'period_end' => '2026-12-01T00:00:00+00:00', 'periods' => 1, 'unit' => 'month', 'order_id' => '01JORD', 'order_item_id' => '01JITEM', 'items' => [], 'currency_iso' => 'EUR', 'net_amount' => 8],
+            'period' => ['object' => 'subscription_period', 'subscription_id' => '01JSUB', 'period_start' => '2026-11-01T00:00:00+00:00', 'period_end' => '2026-12-01T00:00:00+00:00', 'periods' => 1, 'first_period' => true, 'unit' => 'month', 'order_id' => '01JORD', 'order_item_id' => '01JITEM', 'items' => [], 'currency_iso' => 'EUR', 'net_amount' => 8],
         ]]);
 
         $event = Webhook::constructEvent($this->payload, $this->header(), $this->secret);
 
         $this->assertSame('subscription.renewed', $event['type']);
         $this->assertSame('01JORD', $event['data']['period']['order_id']);
+        $this->assertTrue($event['data']['period']['first_period']);
         $this->assertContains(EventType::SUBSCRIPTION_RENEWED, EventType::all());
     }
 

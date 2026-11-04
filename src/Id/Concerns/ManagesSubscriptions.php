@@ -69,10 +69,11 @@ trait ManagesSubscriptions
     }
 
     /**
-     * A short-lived link to the user's billing pages on Anikeen ID, created with the app's own
-     * token (trusted apps only, scope subscriptions:client or orders:client), e.g. for a "Manage
-     * billing" button; see AnikeenId::createBillingPortalLinkForUser() for the attributes
-     * (return_url, group, flow). Create it when the user clicks, it expires after about 15 minutes.
+     * A link to the user's billing pages on Anikeen ID that needs no login, created with the app's
+     * own token (trusted apps only, scope subscriptions:client or orders:client), e.g. for a
+     * "Manage billing" button; see AnikeenId::createBillingPortalLinkForUser() for the attributes
+     * (return_url, group, flow). Single use and valid for about 15 minutes: create it when the
+     * user clicks and redirect right away.
      *
      * @param array{return_url?: null|string, group?: null|string, flow?: null|string} $attributes
      *

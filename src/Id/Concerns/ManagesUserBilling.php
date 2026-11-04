@@ -32,12 +32,14 @@ trait ManagesUserBilling
     }
 
     /**
-     * A short-lived link to a user's billing pages on Anikeen ID, e.g. for a "Manage billing"
-     * button of an app that bills another user's account (a team owner) without that user's
-     * token (trusted apps, scope subscriptions:client or orders:client). The link is signed and
-     * valid for about 15 minutes: create it when the user clicks, don't store it. It doesn't sign
-     * anyone in; the pages then show only what bills the app's subscriptions (of the group) and
-     * lead back to return_url.
+     * A link to a user's billing pages on Anikeen ID that needs no login, like Stripe's customer
+     * portal, e.g. for a "Manage billing" button of an app that bills another user's account (a
+     * team owner) without that user's token (trusted apps, scope subscriptions:client or
+     * orders:client). The link is single use and valid for about 15 minutes: create it when the
+     * user clicks and redirect right away, don't store it. It opens a portal session for that user
+     * only (no login, nobody signed in) with only the flow's billing pages and only what bills the
+     * app's subscriptions (of the group), leading back to return_url; it ends after an hour
+     * without activity.
      *
      * @param string $userId The user's Anikeen ID.
      * @param array{
