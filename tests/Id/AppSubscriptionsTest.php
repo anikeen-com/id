@@ -174,6 +174,35 @@ class AppSubscriptionsTest extends TestCase
         }
     }
 
+    public function test_a_subscription_starts_with_a_free_trial(): void
+    {
+        $this->respond(201, $this->subscription());
+        $this->respond(200, $this->subscription(['active' => true, 'autorenew' => true, 'status' => 'trial', 'starts_at' => '2026-11-04T10:00:00+00:00', 'trial_ends_at' => date(DATE_ATOM, time() + 14 * 86400)]));
+
+        $subscription = $this->owner()->appSubscriptions()->create(['group' => 'team-1', 'name' => 'Pro', 'unit' => 'month', 'price' => '9.99', 'trial_days' => 14, 'trial_once' => true]);
+        $subscription->checkout();
+
+        $this->assertSame(['group' => 'team-1', 'name' => 'Pro', 'unit' => 'month', 'price' => '9.99', 'trial_days' => 14, 'trial_once' => true, 'user_id' => '01JUSER'], $this->sentJson(0));
+        $this->assertTrue($subscription->isTrial());
+        $this->assertTrue($subscription->isActive());
+    }
+
+    public function test_a_used_trial_is_refused_on_checkout(): void
+    {
+        $this->respond(201, $this->subscription());
+        $this->respond(409, ['message' => 'The user already had a free trial.', 'error' => 'trial_already_used']);
+
+        $subscription = $this->owner()->appSubscriptions()->create(['name' => 'Pro', 'unit' => 'month', 'price' => '9.99', 'trial_ends_at' => '2026-12-01T00:00:00+01:00', 'trial_once' => true]);
+
+        try {
+            $subscription->checkout();
+            $this->fail('Expected an ApiException.');
+        } catch (ApiException $e) {
+            $this->assertTrue($e->isConflict());
+            $this->assertSame('trial_already_used', $e->error);
+        }
+    }
+
     public function test_a_missing_user_id_is_reported(): void
     {
         $this->expectException(InvalidArgumentException::class);

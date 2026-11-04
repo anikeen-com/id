@@ -47,6 +47,7 @@ class SubscriptionStatusTest extends TestCase
             $this->assertSame($status, $resource->status());
             $this->assertSame($running, $resource->isActive());
             $this->assertSame($status === SubscriptionStatus::DRAFT, $resource->isDraft());
+            $this->assertSame($status === SubscriptionStatus::TRIAL, $resource->isTrial());
             $this->assertSame($status === SubscriptionStatus::PAUSED, $resource->isPaused());
             $this->assertSame($status === SubscriptionStatus::CANCELLING, $resource->isCancelling());
             $this->assertSame($status === SubscriptionStatus::EXPIRED, $resource->isExpired());

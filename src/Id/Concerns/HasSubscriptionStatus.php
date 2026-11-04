@@ -49,6 +49,14 @@ trait HasSubscriptionStatus
     }
 
     /**
+     * In its free trial: running, nothing billed until trial_ends_at.
+     */
+    public function isTrial(): bool
+    {
+        return $this->status() === SubscriptionStatus::TRIAL;
+    }
+
+    /**
      * Paused: runs until the paid period ends, then expires (resume() to continue).
      */
     public function isPaused(): bool

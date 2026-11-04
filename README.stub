@@ -361,8 +361,31 @@ same value as `status`):
 | `expired` | Paused and ran out; `resume()` starts a new period | no |
 | `cancelled` | Cancelled for good | no |
 
-There are shortcuts for each: `isDraft()`, `isPaused()`, `isCancelling()`, `isExpired()`,
-`isCancelled()`. App subscriptions (`appSubscriptions()`) have the same methods.
+There are shortcuts for each: `isDraft()`, `isTrial()`, `isPaused()`, `isCancelling()`,
+`isExpired()`, `isCancelled()`. App subscriptions (`appSubscriptions()`) have the same methods.
+
+#### Free trials
+
+Give a subscription a free trial with `trial_days` (1–365, counted from the user's confirmation or
+the checkout) or a fixed `trial_ends_at` (ISO 8601, in the future), not both. The subscription
+starts right away with `status` `trial` and nothing billed; the first period is billed when the
+trial ends. `trial_once` refuses the trial if the user already had one with your app in the same
+`group` (422 when creating, 409 `trial_already_used` when checking out):
+
+```php
+$subscription = $user->subscriptions()->create([
+    'name' => 'Pixel Stream Pass',
+    'unit' => 'month',
+    'price' => 6.714286,
+    'trial_days' => 14,
+    'trial_once' => true,
+]);
+```
+
+A few days before the trial ends, Anikeen ID sends `subscription.trial_will_end`
+(`EventType::SUBSCRIPTION_TRIAL_WILL_END`), e.g. to remind the user. Cancelling during the trial
+bills nothing. Trials work the same for app subscriptions and per subscription of a checkout
+session.
 
 ### Webhooks
 
@@ -508,7 +531,7 @@ subscriptions it created (plus those of clients delegated to it).
 Failures throw `Anikeen\Id\Exceptions\ApiException` with `status` (0 = not reachable), a stable
 `error` code (`already_active`, `already_cancelled`, `not_active`, `already_paused`,
 `already_resumed`, `billing_address_missing`, `not_changeable`, `subscription_not_found`,
-`idempotency_key_conflict`) and `isNotFound()`, `isConflict()`, `isTemporary()`:
+`idempotency_key_conflict`, `in_checkout_session`, `trial_already_used`) and `isNotFound()`, `isConflict()`, `isTemporary()`:
 
 ```php
 try {

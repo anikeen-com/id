@@ -21,6 +21,9 @@ final class EventType
     public const SUBSCRIPTION_CANCELLED = 'subscription.cancelled';
     public const SUBSCRIPTION_EXPIRED = 'subscription.expired';
 
+    /** The free trial of a running subscription ends in a few days (see trial_ends_at); billing starts then. */
+    public const SUBSCRIPTION_TRIAL_WILL_END = 'subscription.trial_will_end';
+
     /** The user confirmed a checkout session: all of its subscriptions are running (sent after their subscription.activated). */
     public const CHECKOUT_COMPLETED = 'checkout.completed';
 

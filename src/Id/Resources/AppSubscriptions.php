@@ -49,6 +49,9 @@ class AppSubscriptions
      *     vat_rate?: float,
      *     payload?: null|array,
      *     ends_at?: null|string,
+     *     trial_days?: null|int,
+     *     trial_ends_at?: null|string,
+     *     trial_once?: bool,
      *     idempotency_key?: null|string
      * } $attributes With an idempotency_key (max. 191 characters), a retried call returns the
      *               subscription created by the first one instead of a duplicate.
@@ -56,8 +59,13 @@ class AppSubscriptions
      *               at most 2 decimals, not below price; null = no cap).
      *               predecessor_id: the subscription this one replaces (a resize; same user and
      *               app, checked out, not cancelled): both share the monthly cap within a month.
+     *               trial_days: a free trial of 1–365 days from the checkout on (status `trial`,
+     *               nothing billed; the first period is billed when it ends), or
+     *               trial_ends_at: a fixed end of the trial (ISO 8601, in the future), not both.
+     *               trial_once: refuse the trial if the user already had one with the app in the
+     *               same group (422 here, 409 "trial_already_used" on checkout).
      *
-     * @throws ApiException
+     * @throws ApiException 422 validation, 409 "idempotency_key_conflict", …
      */
     public function create(array $attributes): AppSubscription
     {
