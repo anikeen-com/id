@@ -1,6 +1,6 @@
 # Changelog
 
-## 3.1.0 (unreleased)
+## 3.1.0 (2026-11-05)
 
 - Add the scope `products:read` (`Scope::PRODUCTS_READ`) for read-only access to the product APIs
   of the Anikeen Console.
