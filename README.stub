@@ -160,6 +160,27 @@ if ($result->success()) {
 }
 ```
 
+### Scopes
+
+Scopes follow one schema: `resource` grants full access, `resource:read` read-only access and
+`resource:client` access to what the app or token created itself. All of them are constants on
+`Anikeen\Id\Enums\Scope`, e.g. `Scope::ORDERS_READ`.
+
+The Anikeen Console accepts personal access tokens and OAuth tokens (no client credentials) with
+these scopes for its product and reseller APIs:
+
+| Scope | Constant | Grants |
+|-------|----------|--------|
+| `products:read` | `Scope::PRODUCTS_READ` | view the products of your teams |
+| `reseller-customers:read` | `Scope::RESELLER_CUSTOMERS_READ` | view a reseller team's customers and invitations |
+| `reseller-customers` | `Scope::RESELLER_CUSTOMERS` | manage customers: invite, resend, remove logins (includes reading) |
+| `reseller-grants` | `Scope::RESELLER_GRANTS` | grant customers access to products and revoke it |
+| `reseller-orders` | `Scope::RESELLER_ORDERS` | order products for customers, charged right away |
+
+A full reseller scope includes reading. `user` and `*` do not open the reseller endpoints: the
+token has to carry the reseller scope itself. For the product APIs there is only `products:read`;
+changing products needs `user`.
+
 ### Change the default access token / refresh token field name
 
 If your access / refresh token fields differ from the default `anikeen_id_access_token` / `anikeen_id_refresh_token`, you can specify the field name in the `AppServiceProvider` boot method:
