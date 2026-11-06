@@ -139,6 +139,32 @@ class CheckoutSessionsTest extends TestCase
         $this->assertNull($user->checkoutSessions()->find('unknown'));
     }
 
+    public function test_session_subscriptions_carry_a_free_trial(): void
+    {
+        $this->respond(201, $this->sessionData());
+
+        $this->owner()->appCheckoutSessions()->create(['subscriptions' => [
+            ['group' => 'team-1', 'name' => 'Pro', 'unit' => 'month', 'price' => '9.99', 'trial_days' => 14, 'trial_once' => true],
+            ['group' => 'team-1', 'name' => 'Backup', 'unit' => 'month', 'price' => '1.99', 'trial_ends_at' => '2026-12-01T00:00:00+00:00'],
+        ]]);
+
+        $this->assertSame(14, $this->sentJson(0)['subscriptions'][0]['trial_days']);
+        $this->assertTrue($this->sentJson(0)['subscriptions'][0]['trial_once']);
+        $this->assertSame('2026-12-01T00:00:00+00:00', $this->sentJson(0)['subscriptions'][1]['trial_ends_at']);
+    }
+
+    public function test_session_subscriptions_carry_a_discount(): void
+    {
+        $this->respond(201, $this->sessionData());
+
+        $this->owner()->checkoutSessions()->create(['subscriptions' => [
+            ['name' => 'Pro', 'unit' => 'month', 'price' => 4.99, 'discount' => ['label' => 'WELCOME', 'amount_off' => '1.00', 'duration' => 'once']],
+        ]]);
+
+        $this->assertSame('POST /api/v1/checkout-sessions Bearer user-token', $this->request(0));
+        $this->assertSame(['label' => 'WELCOME', 'amount_off' => '1.00', 'duration' => 'once'], $this->sentJson(0)['subscriptions'][0]['discount']);
+    }
+
     public function test_nothing_is_requested_until_a_method_is_called(): void
     {
         $this->owner()->checkoutSessions();
@@ -159,5 +185,8 @@ class CheckoutSessionsTest extends TestCase
         $this->assertSame(['01JS1', '01JS2'], $event['data']['object']['subscription_ids']);
         $this->assertContains('checkout.expired', EventType::all());
         $this->assertContains('subscription.activated', EventType::all());
+        $this->assertContains('subscription.trial_will_end', EventType::all());
+        $this->assertContains('subscription.discount_ended', EventType::all());
+        $this->assertContains('subscription.updated', EventType::all());
     }
 }

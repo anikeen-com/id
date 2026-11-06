@@ -4,7 +4,10 @@ namespace Anikeen\Id\Tests;
 
 use Anikeen\Id\AnikeenId;
 use Anikeen\Id\Billable;
+use Anikeen\Id\Enums\CancellationReason;
+use Anikeen\Id\Enums\TrialPaymentMethod;
 use Anikeen\Id\Exceptions\ApiException;
+use Anikeen\Id\Resources\AppSubscription;
 use GuzzleHttp\Exception\ConnectException;
 use GuzzleHttp\Psr7\Request;
 use Illuminate\Database\Eloquent\Model;
@@ -252,6 +255,99 @@ class AppSubscriptionsTest extends TestCase
             $this->assertSame('01JOTHER', $owner->appSubscriptions()->userId());
         } finally {
             AnikeenId::useUserIdField('anikeen_id');
+        }
+    }
+
+    public function test_a_subscription_starts_with_a_free_trial(): void
+    {
+        $this->respond(201, $this->subscription());
+        $this->respond(200, $this->subscription(['active' => true, 'autorenew' => true, 'status' => 'trial', 'starts_at' => '2026-11-04T10:00:00+00:00', 'trial_ends_at' => date(DATE_ATOM, time() + 14 * 86400)]));
+
+        $subscription = $this->owner()->appSubscriptions()->create(['group' => 'team-1', 'name' => 'Pro', 'unit' => 'month', 'price' => '9.99', 'trial_days' => 14, 'trial_once' => true]);
+        $subscription->checkout();
+
+        $this->assertSame(['group' => 'team-1', 'name' => 'Pro', 'unit' => 'month', 'price' => '9.99', 'trial_days' => 14, 'trial_once' => true, 'user_id' => '01JUSER'], $this->sentJson(0));
+        $this->assertTrue($subscription->isTrial());
+        $this->assertTrue($subscription->isActive());
+    }
+
+    public function test_a_trial_can_be_confirmed_without_a_payment_method_and_end_cancelled(): void
+    {
+        $this->respond(201, $this->subscription(['trial_days' => 14, 'trial_payment_method' => 'optional']));
+        $this->respond(200, $this->subscription(['active' => false, 'cancelled' => true, 'status' => 'cancelled', 'starts_at' => '2026-11-04T10:00:00+00:00', 'trial_ends_at' => '2026-11-18T10:00:00+00:00', 'cancels_at' => '2026-11-18T10:00:00+00:00', 'trial_payment_method' => 'optional', 'cancellation_reason' => 'trial_ended_without_payment_method']));
+
+        $subscription = $this->owner()->appSubscriptions()->create(['name' => 'Pro', 'unit' => 'month', 'price' => '9.99', 'trial_days' => 14, 'trial_payment_method' => TrialPaymentMethod::OPTIONAL]);
+
+        $this->assertSame('optional', $this->sentJson(0)['trial_payment_method']);
+        $this->assertSame(TrialPaymentMethod::OPTIONAL, $subscription->trial_payment_method);
+
+        $ended = $this->owner()->appSubscriptions()->find('01JSUB');
+        $this->assertTrue($ended->isCancelled());
+        $this->assertSame(CancellationReason::TRIAL_ENDED_WITHOUT_PAYMENT_METHOD, $ended->cancellation_reason);
+    }
+
+    public function test_a_used_trial_is_refused_on_checkout(): void
+    {
+        $this->respond(201, $this->subscription());
+        $this->respond(409, ['message' => 'The user already had a free trial.', 'error' => 'trial_already_used']);
+
+        $subscription = $this->owner()->appSubscriptions()->create(['name' => 'Pro', 'unit' => 'month', 'price' => '9.99', 'trial_ends_at' => '2026-12-01T00:00:00+01:00', 'trial_once' => true]);
+
+        try {
+            $subscription->checkout();
+            $this->fail('Expected an ApiException.');
+        } catch (ApiException $e) {
+            $this->assertTrue($e->isConflict());
+            $this->assertSame('trial_already_used', $e->error);
+        }
+    }
+
+    public function test_a_subscription_is_created_with_a_discount(): void
+    {
+        $discount = ['label' => 'SUMMER20', 'percent_off' => 20, 'duration' => 'repeating', 'duration_in_periods' => 3];
+        $this->respond(201, $this->subscription(['discount' => [...$discount, 'amount_off' => null, 'periods_remaining' => 3]]));
+
+        $subscription = $this->owner()->appSubscriptions()->create(['name' => 'Pro', 'unit' => 'month', 'price' => '9.99', 'discount' => $discount]);
+
+        $this->assertSame($discount, $this->sentJson(0)['discount']);
+        $this->assertSame('SUMMER20', $subscription->discount->label);
+        $this->assertSame(3, $subscription->discount->periods_remaining);
+    }
+
+    public function test_a_running_subscription_is_changed_now_or_at_the_period_end(): void
+    {
+        $change = ['applies_at' => '2026-12-01T00:00:00+00:00', 'name' => 'Pro', 'description' => null, 'unit' => 'month', 'price' => 14.99, 'discount' => null, 'created_at' => '2026-11-04T10:00:00+00:00'];
+        $this->respond(200, $this->subscription(['active' => true, 'price' => 14.99]));
+        $this->respond(200, $this->subscription(['active' => true, 'price' => 14.99, 'scheduled_change' => $change]));
+        $this->respond(200, $this->subscription(['active' => true, 'price' => 14.99, 'scheduled_change' => null]));
+
+        $subscription = new AppSubscription((object) $this->subscription(['active' => true])['data']);
+
+        $this->assertSame(14.99, $subscription->change(['apply' => AppSubscription::APPLY_NOW, 'price' => '14.99', 'discount' => null])->price);
+        $this->assertSame('2026-12-01T00:00:00+00:00', $subscription->change(['apply' => AppSubscription::APPLY_PERIOD_END, 'unit' => 'month', 'name' => 'Pro'])->scheduled_change->applies_at);
+        $this->assertNull($subscription->cancelScheduledChange()->scheduled_change);
+
+        $this->assertSame([
+            'PUT /api/v1/client/subscriptions/01JSUB/change Bearer app-token',
+            'PUT /api/v1/client/subscriptions/01JSUB/change Bearer app-token',
+            'DELETE /api/v1/client/subscriptions/01JSUB/change Bearer app-token',
+        ], array_map(fn ($entry) => $entry['request']->getMethod() . ' ' . $entry['request']->getUri()->getPath() . ' ' . $entry['request']->getHeaderLine('Authorization'), $this->sent));
+        $this->assertSame(['apply' => 'now', 'price' => '14.99', 'discount' => null], $this->sentJson(0));
+        $this->assertSame(['apply' => 'period_end', 'unit' => 'month', 'name' => 'Pro'], $this->sentJson(1));
+    }
+
+    public function test_a_refused_change_carries_its_error_code(): void
+    {
+        $this->respond(409, ['message' => 'The credit would exceed the open bill.', 'error' => 'credit_exceeds_bill']);
+
+        $subscription = new AppSubscription((object) $this->subscription(['active' => true])['data']);
+
+        try {
+            $subscription->change(['apply' => AppSubscription::APPLY_NOW, 'price' => '1.99']);
+            $this->fail('Expected an ApiException.');
+        } catch (ApiException $e) {
+            $this->assertTrue($e->isConflict());
+            $this->assertSame('credit_exceeds_bill', $e->error);
         }
     }
 

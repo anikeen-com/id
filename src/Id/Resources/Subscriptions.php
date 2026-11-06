@@ -24,7 +24,12 @@ class Subscriptions extends BaseCollection
      *      predecessor_id?: null|string,
      *      vat_rate: float,
      *      payload: null|array,
-     *      ends_at: null|string
+     *      ends_at: null|string,
+     *      trial_days?: null|int,
+     *      trial_ends_at?: null|string,
+     *      trial_once?: bool,
+     *      trial_payment_method?: null|string,
+     *      discount?: null|array{label: string, percent_off?: float|string, amount_off?: float|string, duration: string, duration_in_periods?: int}
      *  } $attributes The subscription data:
      *    - group:          The group (optional)
      *    - name:           The name
@@ -36,6 +41,11 @@ class Subscriptions extends BaseCollection
      *    - vat_rate:       The VAT rate (required when set)
      *    - payload:        The payload (optional)
      *    - ends_at:        The end date (optional)
+     *    - trial_days:     A free trial of 1–365 days from the user's confirmation on (optional)
+     *    - trial_ends_at:  Or a fixed end of the free trial (ISO 8601, in the future; optional)
+     *    - trial_once:     Refuse the trial if the user already had one with the app in the group (optional)
+     *    - trial_payment_method: TrialPaymentMethod::REQUIRED (default) or ::OPTIONAL, only with a trial (optional)
+     *    - discount:       A discount per billed period, see AppSubscriptions::create() (optional)
      * @throws Throwable
      */
     public function create(array $attributes): Subscription

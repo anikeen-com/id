@@ -29,6 +29,9 @@ use JsonSerializable;
  * @property ?string $status draft, trial, active, paused, cancelling, expired or cancelled, see status()
  * @property ?string $cancels_at when a scheduled cancellation takes effect
  * @property ?string $trial_ends_at
+ * @property ?string $trial_payment_method required or optional with a trial (TrialPaymentMethod), null without
+ * @property ?string $cancellation_reason why the billing cancelled it (CancellationReason), null otherwise
+ * @property ?object $discount {label, percent_off, amount_off, duration, duration_in_periods, periods_remaining}; periods_remaining is null for `forever`, 0 once it ended
  * @property ?string $starts_at
  * @property ?string $ends_at
  * @property ?string $accounting_at
@@ -37,10 +40,17 @@ use JsonSerializable;
  * @property ?array $payload
  * @property ?string $idempotency_key
  * @property ?string $checkout_session_id the checkout session the user confirms it in, if any
+ * @property ?object $scheduled_change {applies_at, name, description, unit, price, discount, created_at}: a change() for the period end
  */
 class AppSubscription implements JsonSerializable
 {
     use HasSubscriptionStatus;
+
+    /** change(): prorated, right away. */
+    public const APPLY_NOW = 'now';
+
+    /** change(): from the next period on (scheduled_change until then). */
+    public const APPLY_PERIOD_END = 'period_end';
 
     public function __construct(protected object $data)
     {
@@ -60,12 +70,58 @@ class AppSubscription implements JsonSerializable
      * Change a subscription (send only what changes). Before checkout everything can change;
      * afterwards only the description, which names what the customer pays for and is shown
      * on their bills, e.g. `$subscription->update(['description' => 'web-01.example.com'])`.
+     * Prices of running subscriptions change with change().
      *
      * @throws ApiException
      */
     public function update(array $attributes): self
     {
         return $this->send('PUT', '', $attributes);
+    }
+
+    /**
+     * Change a running subscription (send only what changes), like a plan change:
+     *
+     * - `apply: now`: prorated – the unused rest of the current period is credited at the rate it
+     *   was billed at and charged at the new price on the user's open bill. A new unit starts a
+     *   new, fully billed period now. A downgrade whose credit exceeds the open bill is refused
+     *   (409 "credit_exceeds_bill"): schedule it for the period end instead.
+     * - `apply: period_end`: nothing changes now; the subscription has `scheduled_change` and the
+     *   next period is billed at the new values. A new scheduled change replaces the previous one.
+     *
+     * During a free trial nothing was billed, so both just change what the trial ends in.
+     * Webhook `subscription.updated` (with `data.previous_attributes`) when the change takes effect.
+     *
+     * @param array{
+     *     apply: string,
+     *     price?: float|string,
+     *     unit?: string,
+     *     name?: string,
+     *     description?: null|string,
+     *     discount?: null|array{label: string, percent_off?: float|string, amount_off?: float|string, duration: string, duration_in_periods?: int}
+     * } $attributes apply: self::APPLY_NOW or self::APPLY_PERIOD_END.
+     *               unit: a recurring unit (hour, day, week, month, year).
+     *               discount: replaces the discount from the next billed period on, null ends it;
+     *               required with a new unit when the current one counts in periods or is an
+     *               amount_off. Subscriptions with a monthly cap change only at the period end.
+     *
+     * @throws ApiException 409 "not_changeable" (not running: draft, paused, cancelling, …),
+     *                      "proration_not_possible", "credit_exceeds_bill",
+     *                      "billing_address_missing"; 422 validation
+     */
+    public function change(array $attributes): self
+    {
+        return $this->send('PUT', '/change', $attributes);
+    }
+
+    /**
+     * Drop the change scheduled for the period end (nothing happens without one).
+     *
+     * @throws ApiException
+     */
+    public function cancelScheduledChange(): self
+    {
+        return $this->send('DELETE', '/change');
     }
 
     /**

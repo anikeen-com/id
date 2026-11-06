@@ -36,7 +36,12 @@ class AppCheckoutSessions
      *         predecessor_id?: null|string,
      *         vat_rate?: float,
      *         payload?: null|array,
-     *         ends_at?: null|string
+     *         ends_at?: null|string,
+     *         trial_days?: null|int,
+     *         trial_ends_at?: null|string,
+     *         trial_once?: bool,
+     *         trial_payment_method?: null|string,
+     *         discount?: null|array{label: string, percent_off?: float|string, amount_off?: float|string, duration: string, duration_in_periods?: int}
      *     }>,
      *     return_url?: null|string,
      *     metadata?: null|array,
@@ -45,6 +50,11 @@ class AppCheckoutSessions
      * } $attributes return_url must share scheme, host and port with one of the app's redirect
      *               URIs; the user comes back to it with `status` and `checkout_session`. A
      *               repeated idempotency_key returns the first session instead of a new one.
+     *               trial_days / trial_ends_at give a subscription a free trial from the user's
+     *               confirmation on; trial_once is allowed on one subscription per group.
+     *               trial_payment_method `optional`: the session can be confirmed without a
+     *               payment method only if all of its subscriptions are such trials.
+     *               discount: see AppSubscriptions::create(); the confirmation page shows it.
      *
      * @throws ApiException 422 validation (e.g. return_url), 409 "idempotency_key_conflict"
      */

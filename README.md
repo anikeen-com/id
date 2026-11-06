@@ -382,8 +382,102 @@ same value as `status`):
 | `expired` | Paused and ran out; `resume()` starts a new period | no |
 | `cancelled` | Cancelled for good | no |
 
-There are shortcuts for each: `isDraft()`, `isPaused()`, `isCancelling()`, `isExpired()`,
-`isCancelled()`. App subscriptions (`appSubscriptions()`) have the same methods.
+There are shortcuts for each: `isDraft()`, `isTrial()`, `isPaused()`, `isCancelling()`,
+`isExpired()`, `isCancelled()`. App subscriptions (`appSubscriptions()`) have the same methods.
+
+#### Free trials
+
+Give a subscription a free trial with `trial_days` (1–365, counted from the user's confirmation or
+the checkout) or a fixed `trial_ends_at` (ISO 8601, in the future), not both. The subscription
+starts right away with `status` `trial` and nothing billed; the first period is billed when the
+trial ends. `trial_once` refuses the trial if the user already had one with your app in the same
+`group` (422 when creating, 409 `trial_already_used` when checking out):
+
+```php
+$subscription = $user->subscriptions()->create([
+    'name' => 'Pixel Stream Pass',
+    'unit' => 'month',
+    'price' => 6.714286,
+    'trial_days' => 14,
+    'trial_once' => true,
+]);
+```
+
+A few days before the trial ends, Anikeen ID sends `subscription.trial_will_end`
+(`EventType::SUBSCRIPTION_TRIAL_WILL_END`), e.g. to remind the user; `data.payment_method_missing`
+tells you whether the user still has to add a payment method. Cancelling during the trial
+bills nothing. Trials work the same for app subscriptions and per subscription of a checkout
+session.
+
+By default the user needs a payment method to confirm a trial. With `trial_payment_method`
+`TrialPaymentMethod::OPTIONAL` (only together with a trial; `TrialPaymentMethod::REQUIRED` is the
+default) the user can confirm it without one, as long as nothing else has to be paid: in a
+checkout session every subscription has to be such a trial. The confirmation page tells the user
+to add a payment method before the trial ends. If there is still none then, the subscription is
+**cancelled** at the trial's end instead of billed: `status` `cancelled`, `cancellation_reason`
+`CancellationReason::TRIAL_ENDED_WITHOUT_PAYMENT_METHOD`, `subscription.cancelled` with
+`data.reason` set to the same value, and no `subscription.renewed`. Adding a payment method later
+doesn't bring it back – create a new subscription. The trial still counts for `trial_once`.
+Anikeen ID also mails the user a few days before such a trial ends without a payment method.
+
+```php
+use Anikeen\Id\Enums\CancellationReason;
+use Anikeen\Id\Enums\TrialPaymentMethod;
+use Anikeen\Id\Webhooks\EventType;
+
+$subscription = $user->appSubscriptions()->create([
+    'group' => $teamId,
+    'name' => 'Uptimr Pro',
+    'unit' => 'month',
+    'price' => 19.00,
+    'trial_days' => 14,
+    'trial_payment_method' => TrialPaymentMethod::OPTIONAL,
+]);
+
+// in your webhook handler
+$data = $event['data'];
+
+match ($event['type']) {
+    EventType::SUBSCRIPTION_TRIAL_WILL_END => $data['payment_method_missing']
+        ? Reminder::addPaymentMethod($data['object']['id'])
+        : null,
+    EventType::SUBSCRIPTION_CANCELLED => $data['reason'] === CancellationReason::TRIAL_ENDED_WITHOUT_PAYMENT_METHOD
+        ? Pass::downgrade($data['object']['id'])
+        : Pass::revoke($data['object']['id']),
+    default => null,
+};
+```
+
+#### Discounts
+
+A `discount` (e.g. a coupon) lowers the price of billed periods: every discounted period gets a
+negative line with the `label` next to its usage on the same bill, until the discount ends.
+
+```php
+$subscription = $user->subscriptions()->create([
+    'name' => 'Pixel Stream Pass',
+    'unit' => 'month',
+    'price' => 6.714286,
+    'discount' => [
+        'label' => 'SUMMER20',         // shown to the user, e.g. the coupon code
+        'percent_off' => 20,           // or 'amount_off' => 1.50 (net, per period)
+        'duration' => 'repeating',     // once, repeating or forever
+        'duration_in_periods' => 3,    // only for repeating
+    ],
+]);
+
+$subscription->discount;               // {label, percent_off, amount_off, duration, duration_in_periods, periods_remaining}
+```
+
+A period is one unit of the subscription (a month for monthly prices). A free trial isn't a
+billed period: the discount starts with the first paid one. `periods_remaining` counts down with
+every billed period (null for `forever`, 0 once it ended); then `subscription.discount_ended`
+(`EventType::SUBSCRIPTION_DISCOUNT_ENDED`) is sent. A discount can't be combined with a
+`monthly_cap`. It is set when the subscription is created (app subscriptions and checkout
+sessions alike) and changed afterwards with
+[`change()`](#changing-running-subscriptions-trusted-apps). A resize (`predecessor_id`) doesn't
+carry it over: send the successor the rest (`'duration' => 'repeating'`,
+`'duration_in_periods' => $old->discount->periods_remaining`).
 
 ### Webhooks
 
@@ -435,6 +529,25 @@ Route::post('webhooks/anikeen', function (Request $request) {
 arrive more than once or out of order: use `$event['id']` to skip duplicates, and reload the
 object through the API when the current state matters. The admin panel can send a
 `webhook.test` event to check your endpoint.
+
+`subscription.renewed` (`EventType::SUBSCRIPTION_RENEWED`) is sent once for every period booked
+on the user's monthly order, **the first one included**, with `$event['data']['period']`:
+`{subscription_id, period_start, period_end, periods, first_period, unit, order_id, order_item_id,
+items, currency_iso, net_amount}` (`net_amount` after a discount). `first_period` is `true` for the
+subscription's first paid period (the checkout, sent after `subscription.activated`, or the first
+period after a free trial) and `false` for every later one (renewals, resuming an expired
+subscription, a unit change applied right away). Hourly subscriptions renew every hour, so this
+event is **opt-in**: select it explicitly for your endpoint, `*` doesn't include it.
+
+```php
+if ($event['type'] === EventType::SUBSCRIPTION_RENEWED) {
+    $period = $event['data']['period'];
+    // e.g. a commission per paid period; the first one may count differently
+    Commission::record($period['subscription_id'], $period['net_amount'], first: $period['first_period']);
+}
+```
+`order.*` events list the order's `items` and `invoice` like
+[app orders](#app-orders-trusted-apps-no-user-token).
 
 ### Errors
 
@@ -566,7 +679,8 @@ try {
 Failures throw `Anikeen\Id\Exceptions\ApiException` with `status` (0 = not reachable), a stable
 `error` code (`already_active`, `already_cancelled`, `not_active`, `already_paused`,
 `already_resumed`, `billing_address_missing`, `not_changeable`, `subscription_not_found`,
-`idempotency_key_conflict`, `period_already_ended`, `elapsed_periods_not_allowed`,
+`idempotency_key_conflict`, `in_checkout_session`, `trial_already_used`, `proration_not_possible`,
+`credit_exceeds_bill`, `period_already_ended`, `elapsed_periods_not_allowed`,
 `elapsed_amount_exceeded`), the error response via `body()` and `isNotFound()`, `isConflict()`,
 `isTemporary()`:
 
@@ -584,6 +698,70 @@ try {
 }
 ```
 
+### Confirmable orders (trusted apps)
+
+Trusted apps can charge one-off orders right away (`'checkout' => true`). With `'confirm' => true`
+the user confirms and pays the order on Anikeen ID instead, like for a third-party app – e.g. a
+top-up the user starts in your app: Anikeen ID shows the order with VAT, the billing address and
+the payment method (one can be added there) and takes the payment.
+
+```php
+$order = app(AnikeenId::class)->createOrderForUser($team->owner->anikeen_id, [
+    'group' => $team->id,
+    'confirm' => true,
+    'return_url' => route('billing.topup.done'),   // same origin as one of your redirect URIs
+    'metadata' => ['topup' => $topup->id],          // returned as is, also in the order webhooks
+    'items' => [['type' => 'digital', 'name' => 'Credit', 'unit' => 'onetime', 'units' => 1, 'gross_price' => '10.00']],
+])->data;
+
+return redirect()->away($order->confirmation_url);
+// later: https://console.test/billing/topup/done?status=completed&order=01K…
+```
+
+`confirm` needs `items` and can't be combined with `checkout` or a `transaction` (422). The draft
+expires after 24 hours (`expires_at`): it is cancelled, `confirmation_url` becomes null and
+`checkout()` answers 409 `confirmation_expired`. Follow the order through its webhooks:
+`order.created`, then `order.completed` once paid (`order.payment_failed` for a declined charge)
+or `order.cancelled` when the user declines or it expires. `return_url` and `metadata` work for
+every order, also with the user's token (`$user->orders()->create([...])`).
+
+### Changing running subscriptions (trusted apps)
+
+`update()` changes a subscription before its checkout (afterwards only the description).
+`change()` changes price, unit, name, description or discount of a running subscription, like a
+plan change (send only what changes):
+
+```php
+use Anikeen\Id\Resources\AppSubscription;
+
+// upgrade now, prorated: the unused rest of the period is credited, the new price charged for it
+$subscription->change(['apply' => AppSubscription::APPLY_NOW, 'price' => '0.0274', 'name' => 'Cloud Server M']);
+
+// downgrade from the next period on
+$subscription->change(['apply' => AppSubscription::APPLY_PERIOD_END, 'price' => '4.99']);
+$subscription->scheduled_change;       // {applies_at, name, description, unit, price, discount, created_at}
+$subscription->cancelScheduledChange(); // keep the current values after all
+```
+
+- `now` credits the unused part of the current period at the rate it was billed at and charges
+  the rest at the new price, both on the user's open bill. A new `unit` starts a new, fully billed
+  period now. A downgrade whose credit would exceed the open bill is refused with 409
+  `credit_exceeds_bill`: schedule it for the period end instead. 409 `proration_not_possible` when
+  the current period wasn't billed to the subscription (e.g. a takeover); `period_end` works.
+- `period_end` changes nothing now; the next period is billed at the new values. A new
+  `period_end` change replaces the scheduled one, `now` drops it.
+- During a free trial nothing was billed: both just change what the trial ends in.
+- `discount` replaces the discount from the next billed period on, `null` ends it. When the unit
+  changes, a discount that counts in periods or an `amount_off` has to be sent again (422).
+- Subscriptions with a monthly cap change only with `period_end`.
+- Only running subscriptions can change: 409 `not_changeable` for drafts (use `update()`), paused,
+  cancelling, expired and cancelled ones.
+
+When a change takes effect (right away or at the period end), Anikeen ID sends
+`subscription.updated` (`EventType::SUBSCRIPTION_UPDATED`) with the old values of the changed
+fields in `$event['data']['previous_attributes']`. Telling the user about a price increase (and
+getting consent where needed) is up to your app.
+
 ### App orders (trusted apps, no user token)
 
 Orders that bill the app's subscriptions, read with the app's token (scope `orders:client`):
@@ -597,6 +775,67 @@ $team->owner->appOrders()->find($orderId);     // null if unknown or not this us
 Each order has `status` (`processing` = current month, still collecting; `pending` = closed and not
 paid; `completed`; `cancelled`), the totals, `payment_attempts`, `next_payment_attempt_at` (null =
 no more automatic retries) and `last_payment_error`.
+
+Collective (monthly) orders are kept **per app**: your subscriptions are never billed on the same
+order as another app's, even if both use the same `group` (or none); clients delegated to your app
+bill on your app's orders. `$order->oauth_client_id` is the app that bills the order.
+
+Orders also list their lines and their invoice, e.g. to show a team's invoices or to attribute
+amounts (commissions) per subscription:
+
+```php
+$order = app(AnikeenId::class)->appOrders()->find($orderId);
+
+foreach ($order->items as $item) {
+    $item->subscription_id;                     // null for lines that bill no subscription
+    $item->period_start; $item->period_end;     // ISO 8601, the end is exclusive; null without a period
+    $item->net_amount;                          // units × price, rounded to cents
+    $item->discount;                            // {label, percent_off, amount_off} on a discount line, else null
+}
+
+$order->invoice;                                // null until paid, then {id, number, status, …, pdf_url}
+$pdf = app(AnikeenId::class)->appOrders()->invoicePdf($orderId); // the invoice PDF (binary)
+```
+
+The net amount actually billed for a subscription is the sum of `net_amount` of its lines
+(discount lines are negative). `invoicePdf()` throws `ApiException` with 404 `invoice_not_found`
+before the order is paid and 409 `invoice_not_ready` while the PDF is still being rendered
+(usually seconds after the payment; try again later). Legacy orders from before collective orders
+were kept per app (`oauth_client_id` null) can also bill other apps' subscriptions: there `items`
+lists only your lines (the totals are the whole order's), `invoice->pdf_url` is null and
+`invoicePdf()` throws `ApiException` with 403 `invoice_includes_other_apps`.
+
+### Billing portal links (trusted apps)
+
+A "Manage billing" button for a user whose token your app doesn't have (e.g. the owner of a team
+your app bills): create a link to the user's billing pages on Anikeen ID with the app's token
+(scope `subscriptions:client` or `orders:client`). Like Stripe's customer portal, it works
+**without a login**:
+
+```php
+Route::post('teams/{team}/billing', function (Team $team) {
+    return redirect()->away($team->owner->appBillingPortalUrl([
+        'return_url' => route('teams.show', $team), // "Back to <app>"; same origin as one of your redirect URIs
+        'group' => $team->id,                       // only this group's subscriptions, orders and invoices
+        'flow' => 'invoices',                       // overview (default), payment_method, payment_method_update,
+                                                    // invoices, subscriptions or orders
+    ]));
+});
+
+app(AnikeenId::class)->createBillingPortalLinkForUser($userId, ['flow' => 'payment_method_update']);
+// {object: "billing_portal_link", url, user_id, flow, group, return_url, expires_at}
+```
+
+The link is **single use** and valid for about 15 minutes: create it when the user clicks and
+redirect right away; don't store, mail or reuse it (a second request with the same link, e.g. a
+reload, gets a 403). Opening it starts a portal session for that user that needs no login and
+signs nobody in: only the billing pages of the `flow`, only what bills your app's subscriptions
+(of the `group`), with "Back to *app*". The user's account settings, other apps and OAuth consent
+stay behind the normal login; signed in as another account, the portal still shows only the
+link's user. The session ends after an hour without activity or on "Back to *app*".
+`payment_method_update` leads straight to replacing the payment method (e.g. after a failed
+payment) and back to `return_url`. For the signed-in user with their own token,
+`$user->billingPortalUrl()` stays available.
 
 ### Checkout sessions (the user confirms several subscriptions at once)
 
@@ -874,6 +1113,7 @@ public function shippingPriceList(): Result
 ```php
 public function appOrders(): AppOrders
 public function appCheckoutSessions(): AppCheckoutSessions
+public function createBillingPortalLinkForUser(string $userId, array $attributes = []): object
 public function createOrderForUser(string $userId, array $attributes): Result
 public function createTransactionForUser(string $userId, array $attributes): Result
 ```
@@ -980,6 +1220,7 @@ public function appSubscriptions(): AppSubscriptions
 public function appCheckoutSessions(): AppCheckoutSessions
 public function checkoutSessions(): CheckoutSessions
 public function appOrders(): AppOrders
+public function appBillingPortalUrl(array $attributes = []): string
 public function setBillable(Billable|Model $billable): self
 public function getBillable(): Billable
 ```

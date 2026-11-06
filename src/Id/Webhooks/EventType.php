@@ -18,8 +18,33 @@ final class EventType
     public const SUBSCRIPTION_ACTIVATED = 'subscription.activated';
     public const SUBSCRIPTION_PAUSED = 'subscription.paused';
     public const SUBSCRIPTION_RESUMED = 'subscription.resumed';
+    /** `data.reason`: why the billing cancelled it (CancellationReason, e.g. a trial that ended without a payment method), else null. */
     public const SUBSCRIPTION_CANCELLED = 'subscription.cancelled';
     public const SUBSCRIPTION_EXPIRED = 'subscription.expired';
+
+    /**
+     * The free trial of a running subscription ends in a few days (see trial_ends_at); billing
+     * starts then. `data.payment_method_missing`: the user has no payment method yet (with
+     * trial_payment_method `optional` the subscription then ends with the trial).
+     */
+    public const SUBSCRIPTION_TRIAL_WILL_END = 'subscription.trial_will_end';
+
+    /** The last discounted period of a subscription was billed; the following ones are billed at the full price. */
+    public const SUBSCRIPTION_DISCOUNT_ENDED = 'subscription.discount_ended';
+
+    /**
+     * The price, unit, name, description or discount of a running subscription changed (right away
+     * or at the period end); `data.previous_attributes` has the changed fields' old values.
+     */
+    public const SUBSCRIPTION_UPDATED = 'subscription.updated';
+
+    /**
+     * A period of a subscription was booked on its collective order, the first one included;
+     * `data.period` describes it, `data.period.first_period` is true for the subscription's first
+     * paid period (checkout or the end of a free trial). Opt-in: only endpoints that select this
+     * event get it (not through `*`).
+     */
+    public const SUBSCRIPTION_RENEWED = 'subscription.renewed';
 
     /** The user confirmed a checkout session: all of its subscriptions are running (sent after their subscription.activated). */
     public const CHECKOUT_COMPLETED = 'checkout.completed';

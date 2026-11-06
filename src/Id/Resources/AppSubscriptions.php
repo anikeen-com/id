@@ -49,6 +49,11 @@ class AppSubscriptions
      *     vat_rate?: float,
      *     payload?: null|array,
      *     ends_at?: null|string,
+     *     trial_days?: null|int,
+     *     trial_ends_at?: null|string,
+     *     trial_once?: bool,
+     *     trial_payment_method?: null|string,
+     *     discount?: null|array{label: string, percent_off?: float|string, amount_off?: float|string, duration: string, duration_in_periods?: int},
      *     idempotency_key?: null|string
      * } $attributes With an idempotency_key (max. 191 characters), a retried call returns the
      *               subscription created by the first one instead of a duplicate.
@@ -56,8 +61,21 @@ class AppSubscriptions
      *               at most 2 decimals, not below price; null = no cap).
      *               predecessor_id: the subscription this one replaces (a resize; same user and
      *               app, checked out, not cancelled): both share the monthly cap within a month.
+     *               trial_days: a free trial of 1–365 days from the checkout on (status `trial`,
+     *               nothing billed; the first period is billed when it ends), or
+     *               trial_ends_at: a fixed end of the trial (ISO 8601, in the future), not both.
+     *               trial_once: refuse the trial if the user already had one with the app in the
+     *               same group (422 here, 409 "trial_already_used" on checkout).
+     *               trial_payment_method: TrialPaymentMethod::REQUIRED (default) or ::OPTIONAL,
+     *               only with a trial: with `optional` the user may confirm it without a payment
+     *               method, and without one at the trial's end it is cancelled instead of billed.
+     *               discount: e.g. a coupon, as a negative line next to each billed period:
+     *               label (shown to the user, max. 100 characters), percent_off (0.01–100) or
+     *               amount_off (net per period, at most the price), duration `once` (the first
+     *               billed period), `repeating` (duration_in_periods billed periods) or
+     *               `forever`. Not combinable with a monthly_cap.
      *
-     * @throws ApiException
+     * @throws ApiException 422 validation, 409 "idempotency_key_conflict", …
      */
     public function create(array $attributes): AppSubscription
     {
