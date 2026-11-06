@@ -214,11 +214,14 @@ public function boot(): void
 | Something that recurs (a pass, a plan) | [Subscriptions](#subscriptions) | user | the user, on Anikeen ID |
 | Several subscriptions in one step | [Checkout sessions](#checkout-sessions-the-user-confirms-several-subscriptions-at-once) | user or app | the user, on Anikeen ID |
 | Usage billing from your backend, without the user online | [App subscriptions](#app-subscriptions-trusted-apps-no-user-token) | app | your app (trusted apps only) |
+| Single items on the user's monthly bill (e.g. a shipped item) | [Charges](#charges-and-billing-limit-trusted-apps) | app | your app (trusted apps only) |
 
 Most apps are third-party apps: they create an order or subscription as a draft, send the user to
 Anikeen ID to confirm and pay, and get the user back afterwards. Anikeen ID shows the items, asks
 for missing addresses, takes the payment and writes the invoice. Trusted apps (operated by
-Anikeen) can also charge directly; see [Trusted apps](#trusted-apps).
+Anikeen) can also charge directly; see [Trusted apps](#trusted-apps). For a per-item charge on
+the user's monthly bill use `createChargeForUser()`, not `createOrderForUser()`: an order is a
+separate one-off purchase, charged on its own.
 
 The flow, as in a typical shop:
 
@@ -558,6 +561,11 @@ if ($event['type'] === EventType::SUBSCRIPTION_RENEWED) {
 `order.*` events list the order's `items` and `invoice` like
 [app orders](#app-orders-trusted-apps-no-user-token).
 
+`billing_limit.reached` and `billing_limit.available` (`EventType::BILLING_LIMIT_REACHED`,
+`BILLING_LIMIT_AVAILABLE`) tell trusted apps that a user's billing limit was reached or has room
+again; they are opt-in like `subscription.renewed`, see
+[Charges and billing limit](#charges-and-billing-limit-trusted-apps).
+
 `order.refunded` (`EventType::ORDER_REFUNDED`) is sent when money was given back for an order (a
 refund or a partial cancellation, with a credit note); the order carries its `refunds` and
 `refunded_total`. A full refund also cancels the order, so `order.cancelled` is sent too; don't rely on the
@@ -573,7 +581,11 @@ well as with the app's (`app*()`). It carries:
   `already_cancelled`), otherwise `null`,
 - `getMessage()`: Anikeen ID's reason,
 - `isNotFound()` (404), `isConflict()` (409) and `isTemporary()` (no response, 429 or 5xx: retry
-  later).
+  later),
+- `isBillingLimitReached()` (409 `billing_limit_reached`: a [charge](#charges-and-billing-limit-trusted-apps)
+  would take the user's monthly bill above their billing limit),
+- `body()`: the error response, for errors with details (e.g. `remaining` of
+  `billing_limit_reached`).
 
 ```php
 use Anikeen\Id\Exceptions\ApiException;
@@ -850,6 +862,127 @@ link's user. The session ends after an hour without activity or on "Back to *app
 `payment_method_update` leads straight to replacing the payment method (e.g. after a failed
 payment) and back to `return_url`. For the signed-in user with their own token,
 `$user->billingPortalUrl()` stays available.
+
+### Charges and billing limit (trusted apps)
+
+Trusted apps can book single items onto a user's **open monthly bill** of the app, e.g. each item
+a shipping app sends: one line per charge, no subscription, charged with the bill on the 1st like
+every other line (invoice and VAT by Anikeen ID). Anikeen has to enable charging for your app and
+sets a maximum per charge; the user must be connected to your app (they authorised it, or your app
+bills them through subscriptions or orders).
+
+```php
+$anikeen = app(AnikeenId::class);
+
+$charge = $anikeen->createChargeForUser($user->anikeen_id, [
+    'idempotency_key' => "shipment-{$shipment->id}", // per app and user: a retry returns the same charge
+    'name' => 'Signed card',                         // the line on the bill
+    'type' => 'physical',                            // digital (default), physical, physical-reduced
+    'quantity' => 2,
+    'unit_price' => '4.00',                          // net per piece, up to 6 decimals
+    'reference' => "order-{$shipment->order_id}",    // your own id; not on the bill
+    // 'group' => $team->id,                         // only a group your app already bills the user in
+    // 'occurred_at' => '2026-11-05T14:00:00Z',      // the service date, at most 31 days ago
+]);
+
+$charge->id();          // keep it to void the charge later
+$charge->grossAmount(); // "9.52": what it added to the bill
+$charge->orderId();     // the monthly bill it is on
+$charge->status();      // open, billed (the bill was closed) or voided
+
+$anikeen->findChargeForUser($user->anikeen_id, $chargeId);
+$anikeen->voidChargeForUser($user->anikeen_id, $chargeId, 'Parcel lost'); // while the bill is open
+```
+
+- **Idempotency:** retrying with the same key and the same fields returns the existing charge
+  (200 instead of 201), also after the limit was reached; the same key with other fields is 409
+  `idempotency_key_conflict` (`charge_id` in `body()`). Use one key per item you charge for.
+- **Voiding** removes the line while the bill is open (an already voided charge is returned as
+  it is). Once the bill was closed: 409 `charge_already_billed`; only a refund of the order by
+  Anikeen credits it.
+- **`group`** is null or a group your app already bills the user in (a running subscription or an
+  open monthly bill of your app); others are refused with 409 `group_not_allowed`.
+- `reference` and `metadata` (up to 20 string values) are your data about the user, kept with the
+  charge and not shown on the bill: put nothing sensitive there.
+
+**Billing limit.** A user can set one monthly limit (gross) for their whole open monthly bill
+across all Anikeen services. A charge that would take the bill above it is refused with 409
+`billing_limit_reached`; exactly reaching the limit is allowed, `0.00` refuses every charge.
+Subscription renewals and usage are still billed, so the bill can end above the limit. Read the
+limit to stop offering paid actions early (advisory only, it reserves nothing):
+
+```php
+$limit = $anikeen->billingLimitForUser($user->anikeen_id);
+
+$limit->hasLimit();     // false: no limit, every charge fits
+$limit->isReached();    // used >= limit: start no new paid service
+$limit->remaining();    // "17.60" gross room left, null without a limit
+$limit->remainingNet(); // "14.78" at the user's VAT rate, a hint
+$limit->allows('9.52'); // would this charge fit right now (advisory)
+$limit->resetsAt();     // when this month's bills are closed
+$limit->version();      // only goes up
+$limit->used();         // the user's open bills across all Anikeen services, null without a limit
+$limit->usedByApp();    // your app's share; used − usedByApp = "your other Anikeen services"
+```
+
+`used` (the user's open bills across all Anikeen services) is visible to apps **only while the
+user has set a limit**; without one `limit`, `used`, `remaining` and `remaining_net` are null.
+`usedByApp()` (your app's own open bills) is always there. The user sees their own limit in
+`$user->billingOverview()->billing_limit` (with `used`, without `used_by_app`; null while they
+can't set one). Apps that may charge can read the limit; others need Anikeen to allow it (403
+`billing_limit_not_enabled`).
+
+Handling a refused charge:
+
+```php
+use Anikeen\Id\Exceptions\ApiException;
+
+try {
+    $charge = $anikeen->createChargeForUser($user->anikeen_id, $attributes);
+} catch (ApiException $e) {
+    if ($e->isBillingLimitReached()) {
+        $e->body()->remaining;  // room left before this charge, e.g. "2.60"
+        $e->body()->required;   // the refused charge, gross
+        $e->body()->resets_at;  // when the limit has room again at the latest
+        return $shipment->holdForBillingLimit();
+    }
+
+    match ($e->error) {
+        'charge_exceeds_maximum' => report($e),   // above your app's maximum ($e->body()->max_charge_net)
+        'group_not_allowed' => report($e),
+        'billing_address_missing' => $shipment->askForBillingAddress(),
+        default => throw $e,
+    };
+}
+```
+
+**Webhooks.** `billing_limit.reached` and `billing_limit.available` are sent when the limit is
+reached or has room again (a raised or removed limit, a void, the monthly reset). They are
+**opt-in** (select them for your endpoint; `*` doesn't include them) and go only to apps that may
+read the limit of a user connected to them. `data.object` is the billing limit as your app reads
+it, `data.reason` says why (`booking`, `limit_changed`, `limit_removed`, `voided`,
+`period_reset`, `order_changed`). Keep the highest `version` per user and ignore events with a
+lower or equal one, so a late delivery can't undo a newer state. In the `match` of the
+[webhook route](#webhooks):
+
+```php
+EventType::BILLING_LIMIT_REACHED, EventType::BILLING_LIMIT_AVAILABLE => Customer::syncBillingLimit(
+    $object['user_id'], reached: $event['type'] === EventType::BILLING_LIMIT_REACHED, version: $object['version'],
+),
+```
+
+The limit is checked live when a charge is booked, so a late or missed webhook never lets a
+charge through; poll `billingLimitForUser()` if you need the current state.
+
+#### Error codes
+
+| Status | `error` |
+|--------|---------|
+| 403 | `client_not_allowed` (not a trusted app with its own token), `charges_not_enabled` (charging is not enabled for your app; also for reads and voids), `billing_limit_not_enabled` (limit read only) |
+| 404 | `user_not_found` (unknown, deleted or not connected to your app), `charge_not_found` |
+| 409 | `billing_limit_reached` (`isBillingLimitReached()`), `charge_exceeds_maximum` (+ `max_charge_net`), `group_not_allowed`, `idempotency_key_conflict` (+ `charge_id`), `billing_address_missing`, `charge_already_billed` (+ `charge_id`) |
+| 422 | validation (`errors`), no `error` code |
+| 429 | `too_many_requests` (`isTemporary()`) |
 
 ### Checkout sessions (the user confirms several subscriptions at once)
 
