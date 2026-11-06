@@ -560,7 +560,8 @@ if ($event['type'] === EventType::SUBSCRIPTION_RENEWED) {
 
 `order.refunded` (`EventType::ORDER_REFUNDED`) is sent when money was given back for an order (a
 refund or a partial cancellation, with a credit note); the order carries its `refunds` and
-`refunded_total`. A full refund also cancels the order, followed by `order.cancelled`.
+`refunded_total`. A full refund also cancels the order, so `order.cancelled` is sent too; don't rely on the
+order of the two events.
 
 ### Errors
 
