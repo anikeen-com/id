@@ -87,6 +87,87 @@ class AppSubscriptionsTest extends TestCase
         $this->assertSame(['starts_at' => '2026-05-19T11:33:58+00:00'], $this->sentJson(1));
     }
 
+    public function test_a_checkout_without_arguments_sends_no_body(): void
+    {
+        $this->respond(201, $this->subscription());
+        $this->respond(200, $this->subscription(['active' => true]));
+
+        $this->owner()->appSubscriptions()->create(['name' => 'Server', 'unit' => 'hour', 'price' => 1])->checkout();
+
+        $request = $this->sent[1]['request'];
+        $this->assertSame('PUT /api/v1/client/subscriptions/01JSUB/checkout', $request->getMethod() . ' ' . $request->getUri()->getPath());
+        $this->assertSame('', (string) $request->getBody());
+        $this->assertFalse($request->hasHeader('Content-Type'));
+    }
+
+    public function test_a_checkout_from_a_date_sends_only_the_start(): void
+    {
+        $this->respond(201, $this->subscription());
+        $this->respond(200, $this->subscription(['active' => true]));
+
+        $this->owner()->appSubscriptions()->create(['name' => '.de TLD', 'unit' => 'year', 'price' => '5.19'])
+            ->checkout('2026-05-19T11:33:58+00:00');
+
+        $this->assertSame('{"starts_at":"2026-05-19T11:33:58+00:00"}', (string) $this->sent[1]['request']->getBody());
+    }
+
+    public function test_elapsed_periods_are_billed_up_to_the_ceiling(): void
+    {
+        $this->respond(201, $this->subscription());
+        $this->respond(200, $this->subscription(['active' => true]));
+
+        $this->owner()->appSubscriptions()->create(['name' => '.de TLD', 'unit' => 'year', 'price' => '5.19'])
+            ->checkout(new \DateTimeImmutable('2024-05-19 11:33:58', new \DateTimeZone('UTC')), billElapsedPeriods: true, maxNetAmount: '15.57');
+
+        $request = $this->sent[1]['request'];
+        $this->assertSame('PUT /api/v1/client/subscriptions/01JSUB/checkout', $request->getMethod() . ' ' . $request->getUri()->getPath());
+        $this->assertSame(['starts_at' => '2024-05-19T11:33:58+00:00', 'bill_elapsed_periods' => true, 'max_net_amount' => '15.57'], $this->sentJson(1));
+    }
+
+    public function test_a_float_ceiling_is_sent_with_two_decimals(): void
+    {
+        $this->respond(201, $this->subscription());
+        $this->respond(200, $this->subscription(['active' => true]));
+
+        $this->owner()->appSubscriptions()->create(['name' => '.de TLD', 'unit' => 'year', 'price' => 19.99])
+            ->checkout('2024-05-19', true, 19.99 * 3);
+
+        $this->assertSame(['starts_at' => '2024-05-19', 'bill_elapsed_periods' => true, 'max_net_amount' => 59.97], $this->sentJson(1));
+    }
+
+    public function test_billing_elapsed_periods_needs_a_start_and_a_ceiling(): void
+    {
+        $this->respond(201, $this->subscription());
+        $subscription = $this->owner()->appSubscriptions()->create(['name' => '.de TLD', 'unit' => 'year', 'price' => '5.19']);
+
+        foreach ([[null, '10.00'], ['2024-05-19', null], ['', '10.00'], ['2024-05-19', '']] as [$startsAt, $maxNetAmount]) {
+            try {
+                $subscription->checkout($startsAt, billElapsedPeriods: true, maxNetAmount: $maxNetAmount);
+                $this->fail('Expected an InvalidArgumentException.');
+            } catch (InvalidArgumentException) {
+            }
+        }
+
+        $this->assertCount(1, $this->sent);
+    }
+
+    public function test_an_exceeded_ceiling_carries_the_net_amount(): void
+    {
+        $this->respond(201, $this->subscription());
+        $this->respond(409, ['message' => 'The elapsed periods come to 20.76 net, more than 15.57.', 'error' => 'elapsed_amount_exceeded', 'net_amount' => '20.76']);
+
+        $subscription = $this->owner()->appSubscriptions()->create(['name' => '.de TLD', 'unit' => 'year', 'price' => '5.19']);
+
+        try {
+            $subscription->checkout('2024-05-19', billElapsedPeriods: true, maxNetAmount: '15.57');
+            $this->fail('Expected an ApiException.');
+        } catch (ApiException $e) {
+            $this->assertTrue($e->isConflict());
+            $this->assertSame('elapsed_amount_exceeded', $e->error);
+            $this->assertSame('20.76', $e->body()->net_amount);
+        }
+    }
+
     public function test_errors_carry_status_and_error_code(): void
     {
         $this->respond(409, ['message' => 'Product subscription has already been cancelled.', 'error' => 'already_cancelled']);

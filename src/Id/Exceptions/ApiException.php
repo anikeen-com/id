@@ -3,6 +3,7 @@
 namespace Anikeen\Id\Exceptions;
 
 use Anikeen\Id\Result;
+use Psr\Http\Message\ResponseInterface;
 use Throwable;
 
 /**
@@ -42,6 +43,24 @@ class ApiException extends ResourceException
     public static function unreachable(Throwable $previous): static
     {
         return new static(sprintf('Anikeen ID is not reachable: %s', $previous->getMessage()), 0, null, $previous);
+    }
+
+    /**
+     * The JSON body of Anikeen ID's error response, null without one. Some errors carry details,
+     * e.g. `net_amount` of "elapsed_amount_exceeded".
+     */
+    public function body(): ?object
+    {
+        $previous = $this->getPrevious();
+        $response = $previous !== null && method_exists($previous, 'getResponse') ? $previous->getResponse() : null;
+
+        if (!$response instanceof ResponseInterface) {
+            return null;
+        }
+
+        $body = json_decode((string) $response->getBody());
+
+        return is_object($body) ? $body : null;
     }
 
     public function isNotFound(): bool
