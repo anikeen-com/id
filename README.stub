@@ -16,11 +16,12 @@ subscriptions and physical goods, with invoices, VAT and payment handled by Anik
 3. [Sign in with Anikeen ID](#sign-in-with-anikeen-id)
 4. [Payments](#payments)
 5. [Trusted apps](#trusted-apps)
-6. [API authentication](#api-authentication)
-7. [General](#general)
-8. [Examples](#examples)
-9. [Documentation](#documentation)
-10. [Development](#development)
+6. [Preferences](#preferences)
+7. [API authentication](#api-authentication)
+8. [General](#general)
+9. [Examples](#examples)
+10. [Documentation](#documentation)
+11. [Development](#development)
 
 ## Installation
 
@@ -180,6 +181,14 @@ these scopes for its product and reseller APIs:
 A full reseller scope includes reading. `user` and `*` do not open the reseller endpoints: the
 token has to carry the reseller scope itself. For the product APIs there is only `products:read`;
 changing products needs `user`.
+
+Anikeen ID's [preferences](#preferences) use these scopes:
+
+| Scope | Constant | Grants |
+|-------|----------|--------|
+| `preferences:read` | `Scope::PREFERENCES_READ` | read the user's shared preferences (`global`) |
+| `preferences` | `Scope::PREFERENCES` | read and change them |
+| `preferences:client` | `Scope::PREFERENCES_CLIENT` | app tokens: the preferences of any user, in the namespaces Anikeen registered for the app |
 
 ### Change the default access token / refresh token field name
 
@@ -549,6 +558,11 @@ if ($event['type'] === EventType::SUBSCRIPTION_RENEWED) {
 `order.*` events list the order's `items` and `invoice` like
 [app orders](#app-orders-trusted-apps-no-user-token).
 
+`order.refunded` (`EventType::ORDER_REFUNDED`) is sent when money was given back for an order (a
+refund or a partial cancellation, with a credit note); the order carries its `refunds` and
+`refunded_total`. A full refund also cancels the order, so `order.cancelled` is sent too; don't rely on the
+order of the two events.
+
 ### Errors
 
 Every failed request throws `Anikeen\Id\Exceptions\ApiException`, with the user's token as
@@ -917,6 +931,156 @@ $result->data->invitation_sent;        // only for an account created by this ca
 `findUserByEmail()` changes nothing. It throws `ApiException` when the request fails for any reason
 other than an unknown address.
 
+
+## Preferences
+
+Anikeen ID keeps small per-user settings as JSON values under a *namespace* and a *key*, so they
+follow the user across devices and apps:
+
+- **`global`** is shared by all apps. Only registered keys and values are accepted: today
+  `SharedPreference::APPEARANCE` with `Appearance::SYSTEM`, `LIGHT` or `DARK`.
+- **App namespaces** (e.g. `acme`) hold one app's own data: onboarding state, a default workspace,
+  the user's customer ID at a payment provider. Use another namespace on staging (e.g.
+  `acme-staging`), so test data never mixes with production.
+
+**Registration.** Access never comes from scopes alone: any client can request any scope. Ask
+Anikeen to register your OAuth client(s) (the app has to be [trusted](#trusted-apps)) for
+
+- the namespaces your app owns (read, write and the lookup),
+- read access to another app's namespace,
+- `global` with the app's token (users always read and write their own `global` with their token),
+- keys whose values are unique (see the lookup below).
+
+Without it, app requests fail with 403 `client_not_trusted` or 404 `namespace_not_found`.
+
+**Scopes.** User tokens need `Scope::PREFERENCES` (`preferences`, read and write) or
+`Scope::PREFERENCES_READ` (`preferences:read`); app tokens `Scope::PREFERENCES_CLIENT`
+(`preferences:client`).
+
+**Limits.** A value is at most 2048 bytes of JSON and 4 levels deep; at most 50 keys per user and
+namespace (updating a key always works); keys match `^[a-z][a-z0-9_]{0,63}$`. Per minute: 60
+requests per user and app with user tokens, 600 per app with the app token and 120 lookups per
+app (429 `rate_limited` with `Retry-After`).
+
+**Not a secrets store.** Values are stored as plain JSON and shown to Anikeen's support and to the
+user on a request for their data. Store IDs and settings, never passwords, API keys or tokens: keys
+that look like credentials (`secret`, `token`, `password`, `api_key`, …) are rejected with 422
+`forbidden_key`.
+
+### The user's shared preferences (user token)
+
+```php
+use Anikeen\Id\Enums\Appearance;
+use Anikeen\Id\Enums\SharedPreference;
+
+$user->globalPreference(SharedPreference::APPEARANCE, Appearance::SYSTEM); // the default when not set
+$user->globalPreferences()->values();     // ['appearance' => 'dark']
+
+$preference = $user->setGlobalPreference(SharedPreference::APPEARANCE, Appearance::DARK);
+$preference->version;                     // e.g. 1042
+
+$user->deleteGlobalPreference(SharedPreference::APPEARANCE);
+```
+
+User tokens reach `global` only; an app namespace answers 404 `namespace_not_found`, whatever the
+token's scopes. The app's own token (client credentials) has no user and gets 401 on these routes.
+
+### Preferences of any user (trusted apps)
+
+With the app's own token, by the user's Anikeen ID:
+
+```php
+$anikeenId = app(AnikeenId::class);
+
+$preferences = $anikeenId->preferencesByUserId($userId, 'acme'); // sorted by key, no pagination
+$preferences->get('onboarding', []);     // the value or a default; also has(), find(), values()
+
+$preference = $anikeenId->preferenceByUserId($userId, 'acme', 'onboarding'); // 404 preference_not_found if not set
+$preference->value;                      // JSON objects as stdClass, so {} stays {}
+$preference->version;
+$preference->updated_by;                 // {type: "user"|"app", client_id}
+
+$anikeenId->setPreferenceByUserId($userId, 'acme', 'onboarding', ['step' => 3]);
+$anikeenId->deletePreferenceByUserId($userId, 'acme', 'onboarding');
+```
+
+A value is any JSON value; pass `(object) []` for an empty object (`[]` is an empty list).
+`setPreferenceByUserId()` returns the stored preference; `wasCreated()` tells whether the write
+created the key. A deleted user's preferences are gone: every call answers 404 `user_not_found`.
+
+### Conditional writes and retries
+
+Writes are *last write wins* by default. Every write gives the preference a new `version`.
+Versions are opaque: they only go up (also when a key is deleted and set again) and increase per
+user, not by one per key. Pass the version you read to write only if nobody changed it in between
+(`If-Match`), or `createOnly` to write only if the key isn't set yet (`If-None-Match: *`):
+
+```php
+use Anikeen\Id\Exceptions\PreconditionFailedException;
+
+$preference = $anikeenId->preferenceByUserId($userId, 'acme', 'layout');
+
+try {
+    $anikeenId->setPreferenceByUserId($userId, 'acme', 'layout', $merged, ifVersion: $preference->version);
+} catch (PreconditionFailedException $e) {
+    $e->error;            // "preference_version_mismatch" (or "preference_exists" for createOnly)
+    $e->currentVersion(); // the version stored now, null when the key isn't set: reload, merge, retry
+}
+
+$anikeenId->setPreferenceByUserId($userId, 'acme', 'welcome_sent_at', now()->toIso8601String(), createOnly: true);
+```
+
+`deletePreferenceByUserId()`, `setGlobalPreference()` and `deleteGlobalPreference()` take
+`ifVersion` too. Writing the value that is already stored is a no-op that succeeds (no new version),
+even when the precondition would fail, so retrying a write after a timeout is safe.
+
+### Unique keys and the lookup
+
+Anikeen can declare keys of your namespace unique, e.g. `customer_id`. Their values are strings of
+1 to 255 characters without surrounding whitespace, held by at most one user: setting another
+user's value fails with 409 `preference_value_taken`. Your app can then find the user by value, e.g.
+in a payment provider's webhook:
+
+```php
+$userId = $anikeenId->findUserIdByPreference('acme', 'customer_id', 'cus_123'); // null if nobody holds it
+```
+
+The value is sent in the body, never in the URL. `findUserIdByPreference()` returns `null` only for
+404 `preference_not_found` (also when the user was deleted); everything else throws, e.g. 422
+`key_not_unique` for a key that isn't declared unique.
+
+### Error codes
+
+Failures throw `ApiException` (412 `PreconditionFailedException`) with these `error` codes:
+
+| Status | `error` |
+|--------|---------|
+| 401 | `unauthenticated` (no or an invalid token; an app token on the user routes) |
+| 403 | `missing_scope`, `app_token_required` (a user token on the app routes), `client_not_trusted`, `namespace_read_only`, `lookup_not_allowed` |
+| 404 | `namespace_not_found` (unknown or not accessible), `user_not_found` (also deleted users), `preference_not_found`, `not_found` |
+| 405 | `method_not_allowed` |
+| 409 | `preference_value_taken` |
+| 412 | `preference_version_mismatch`, `preference_exists` |
+| 422 | `invalid_key`, `forbidden_key`, `unknown_shared_key`, `value_required`, `value_too_large`, `value_too_deep`, `invalid_shared_value`, `invalid_unique_value`, `key_not_unique`, `preference_limit_exceeded` |
+| 429 | `rate_limited` |
+
+A `null` value is rejected with 422 `value_required`: delete the key instead.
+
+### Caching
+
+Anikeen ID is the source of truth. `globalPreferences()` and `globalPreference()` cache the list
+on the model instance (one request per instance); `setGlobalPreference()` and
+`deleteGlobalPreference()` clear it. For a copy that outlives the request, keep a read cache: fill
+it at sign-in, write to Anikeen ID first and update the copy from the response, and let it expire
+after about an hour, since other apps and the user can change shared preferences too:
+
+```php
+$appearance = Cache::remember("appearance:{$user->id}", now()->addHour(),
+    fn () => $user->globalPreference(SharedPreference::APPEARANCE, Appearance::SYSTEM));
+
+$user->setGlobalPreference(SharedPreference::APPEARANCE, $request->appearance);
+Cache::put("appearance:{$user->id}", $request->appearance, now()->addHour());
+```
 
 ## API authentication
 

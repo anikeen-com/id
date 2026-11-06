@@ -2,6 +2,7 @@
 
 namespace Anikeen\Id;
 
+use Anikeen\Id\Concerns\ManagesPreferences;
 use Anikeen\Id\Concerns\ManagesPricing;
 use Anikeen\Id\Concerns\ManagesProducts;
 use Anikeen\Id\Concerns\ManagesShippingLabels;
@@ -23,6 +24,7 @@ use Illuminate\Contracts\Auth\Authenticatable;
 class AnikeenId
 {
     use OauthTrait;
+    use ManagesPreferences;
     use ManagesPricing;
     use ManagesProducts;
     use ManagesShippingLabels;
@@ -369,10 +371,12 @@ class AnikeenId
     /**
      * Build query & execute.
      *
+     * @param array<string, string> $headers Extra request headers, e.g. `If-Match` for conditional
+     *     writes; they are sent in addition to (and may not replace) Client-ID, Accept and Authorization.
      * @throws GuzzleException
      * @throws RequestRequiresClientIdException
      */
-    public function request(string $method, string $path, null|array $payload = null, array $parameters = [], ?Paginator $paginator = null, bool $useClientSecret = false): Result
+    public function request(string $method, string $path, null|array $payload = null, array $parameters = [], ?Paginator $paginator = null, bool $useClientSecret = false, array $headers = []): Result
     {
         if ($paginator !== null) {
             $parameters[$paginator->action] = $paginator->cursor();
@@ -380,7 +384,7 @@ class AnikeenId
 
         try {
             $response = $this->client->request($method, $path, [
-                'headers' => $this->buildHeaders((bool)$payload, $useClientSecret),
+                'headers' => $this->buildHeaders((bool)$payload, $useClientSecret) + $headers,
                 'query' => Query::build($parameters),
                 'json' => $payload ?: null,
             ]);
@@ -419,35 +423,35 @@ class AnikeenId
      * @throws GuzzleException
      * @throws RequestRequiresClientIdException
      */
-    public function get(string $path, array $parameters = [], ?Paginator $paginator = null): Result
+    public function get(string $path, array $parameters = [], ?Paginator $paginator = null, array $headers = []): Result
     {
-        return $this->request('GET', $path, null, $parameters, $paginator);
+        return $this->request('GET', $path, null, $parameters, $paginator, false, $headers);
     }
 
     /**
      * @throws GuzzleException
      * @throws RequestRequiresClientIdException
      */
-    public function post(string $path, array $payload = [], array $parameters = [], ?Paginator $paginator = null): Result
+    public function post(string $path, array $payload = [], array $parameters = [], ?Paginator $paginator = null, array $headers = []): Result
     {
-        return $this->request('POST', $path, $payload, $parameters, $paginator);
+        return $this->request('POST', $path, $payload, $parameters, $paginator, false, $headers);
     }
 
     /**
      * @throws GuzzleException
      * @throws RequestRequiresClientIdException
      */
-    public function put(string $path, array $payload = [], array $parameters = [], ?Paginator $paginator = null): Result
+    public function put(string $path, array $payload = [], array $parameters = [], ?Paginator $paginator = null, array $headers = []): Result
     {
-        return $this->request('PUT', $path, $payload, $parameters, $paginator);
+        return $this->request('PUT', $path, $payload, $parameters, $paginator, false, $headers);
     }
 
     /**
      * @throws GuzzleException
      * @throws RequestRequiresClientIdException
      */
-    public function delete(string $path, array $payload = [], array $parameters = [], ?Paginator $paginator = null): Result
+    public function delete(string $path, array $payload = [], array $parameters = [], ?Paginator $paginator = null, array $headers = []): Result
     {
-        return $this->request('DELETE', $path, $payload, $parameters, $paginator);
+        return $this->request('DELETE', $path, $payload, $parameters, $paginator, false, $headers);
     }
 }

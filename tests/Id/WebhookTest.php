@@ -70,6 +70,12 @@ class WebhookTest extends TestCase
         $this->assertContains(EventType::SUBSCRIPTION_RENEWED, EventType::all());
     }
 
+    public function test_refunds_have_their_own_event_type(): void
+    {
+        $this->assertSame('order.refunded', EventType::ORDER_REFUNDED);
+        $this->assertContains(EventType::ORDER_REFUNDED, EventType::all());
+    }
+
     public function test_a_change_carries_the_previous_attributes(): void
     {
         $this->payload = json_encode(['id' => '01JEVT', 'type' => EventType::SUBSCRIPTION_UPDATED, 'created' => time(), 'data' => [

@@ -9,6 +9,7 @@ use Anikeen\Id\Concerns\ManagesInvoices;
 use Anikeen\Id\Concerns\ManagesOrders;
 use Anikeen\Id\Concerns\ManagesPaymentMethods;
 use Anikeen\Id\Concerns\ManagesProfile;
+use Anikeen\Id\Concerns\ManagesUserPreferences;
 use Anikeen\Id\Concerns\ManagesSubscriptions;
 use Anikeen\Id\Concerns\ManagesTaxation;
 use Anikeen\Id\Concerns\ManagesTransactions;
@@ -27,6 +28,7 @@ trait Billable
     use ManagesSubscriptions;
     use ManagesTaxation;
     use ManagesTransactions;
+    use ManagesUserPreferences;
     use ManagesUserSshKeys;
 
     /*
@@ -40,6 +42,8 @@ trait Billable
     protected mixed $invoicesCache = null;
     protected mixed $ordersCache = null;
     protected mixed $paymentMethodsCache = null;
+    /** @var array<string, \Anikeen\Id\Resources\Preferences> by namespace */
+    protected array $preferencesCache = [];
     protected mixed $subscriptionsCache = null;
     protected mixed $transactionsCache = null;
     protected mixed $userDataCache = null;
