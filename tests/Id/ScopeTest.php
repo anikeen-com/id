@@ -25,6 +25,13 @@ class ScopeTest extends TestCase
         $this->assertSame($expected, $constant);
     }
 
+    public function test_the_preference_scopes_match_anikeen_id(): void
+    {
+        $this->assertSame('preferences', Scope::PREFERENCES);
+        $this->assertSame('preferences:read', Scope::PREFERENCES_READ);
+        $this->assertSame('preferences:client', Scope::PREFERENCES_CLIENT);
+    }
+
     public function test_there_is_no_full_products_scope_the_console_would_not_accept(): void
     {
         // the Console's product APIs accept `user`, `user:read` and `products:read` only

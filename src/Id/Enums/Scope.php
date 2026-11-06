@@ -33,6 +33,12 @@ class Scope
     const TRANSACTIONS_READ = 'transactions:read';
     const TRANSACTIONS_CLIENT = 'transactions:client';
 
+    // The user's own shared preferences (`global`). PREFERENCES_CLIENT labels an app token for
+    // the preferences of any user; access to a namespace is granted by Anikeen, not by the scope.
+    const PREFERENCES = 'preferences';
+    const PREFERENCES_READ = 'preferences:read';
+    const PREFERENCES_CLIENT = 'preferences:client';
+
     const SSH_KEYS = 'ssh-keys';
     const SSH_KEYS_READ = 'ssh-keys:read';
 
