@@ -4,6 +4,7 @@ namespace Anikeen\Id\Tests;
 
 use Anikeen\Id\AnikeenId;
 use Anikeen\Id\Billable;
+use Anikeen\Id\Exceptions\ApiException;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -88,6 +89,52 @@ class EndpointsTest extends TestCase
 
         $this->assertSame('POST /api/v1/admin/users Bearer app-token', $this->sentCall(0));
         $this->assertSame(['email' => 'erika@example.com', 'password' => 'secret-123', 'name' => 'Erika Mustermann', 'password_confirmation' => 'secret-123'], $this->sentJson(0));
+    }
+
+    public function test_create_user_can_send_an_invitation(): void
+    {
+        $this->respond(201, ['data' => ['id' => '01JNEW', 'email' => 'erika@example.com', 'created' => true, 'invitation_sent' => true]]);
+
+        $result = app(AnikeenId::class)->createUser(['name' => 'Erika Mustermann', 'email' => 'erika@example.com', 'send_invitation' => true]);
+
+        $this->assertSame('POST /api/v1/admin/users Bearer app-token', $this->sentCall(0));
+        $this->assertSame(['name' => 'Erika Mustermann', 'email' => 'erika@example.com', 'send_invitation' => true], $this->sentJson(0));
+        $this->assertTrue($result->data->created);
+        $this->assertTrue($result->data->invitation_sent);
+    }
+
+    public function test_find_user_by_email_uses_the_lookup_endpoint(): void
+    {
+        $this->respond(200, ['data' => ['id' => '01JUSER', 'name' => 'Erika', 'email' => 'erika@example.com', 'email_verified' => true, 'has_billing_address' => false]]);
+
+        $result = app(AnikeenId::class)->findUserByEmail('Erika@Example.com');
+
+        $this->assertSame('POST /api/v1/admin/users/lookup Bearer app-token', $this->sentCall(0));
+        $this->assertSame(['email' => 'Erika@Example.com'], $this->sentJson(0));
+        $this->assertSame('01JUSER', $result->data->id);
+        $this->assertFalse($result->data->has_billing_address);
+    }
+
+    public function test_find_user_by_email_returns_null_without_an_account(): void
+    {
+        $this->respond(404, ['message' => 'User not found.', 'error' => 'user_not_found']);
+
+        $this->assertNull(app(AnikeenId::class)->findUserByEmail('nobody@example.com'));
+    }
+
+    public function test_find_user_by_email_throws_other_failures(): void
+    {
+        $this->respond(404, ['message' => 'Not found.']); // e.g. an Anikeen ID without the lookup
+        $this->respond(500, ['message' => 'Server Error']);
+
+        foreach ([404, 500] as $status) {
+            try {
+                app(AnikeenId::class)->findUserByEmail('erika@example.com');
+                $this->fail('Expected an ApiException.');
+            } catch (ApiException $e) {
+                $this->assertSame($status, $e->status);
+            }
+        }
     }
 
     public function test_email_check_and_socialite_users(): void

@@ -514,6 +514,11 @@ $subscription = $subscriptions->create([
 
 $subscription->checkout();             // bill the first period
 $subscription->checkout(startsAt: $domain->registered_at); // already running: bill the period that started then
+$subscription->checkout(                // running for longer: also bill the periods that have ended
+    startsAt: $domain->registered_at,
+    billElapsedPeriods: true,
+    maxNetAmount: '15.57',             // net ceiling, e.g. the amount the customer agreed to
+);
 $subscription->pause();                // expires when the paid period ends
 $subscription->resume();               // expired subscriptions start a new period
 $subscription->revoke(refund: false);  // cancel
@@ -526,10 +531,44 @@ The user's Anikeen ID is read from the billable's `anikeen_id` attribute
 (`AnikeenId::useUserIdField('…')` to change it). The app must be trusted by Anikeen ID; it sees the
 subscriptions it created (plus those of clients delegated to it).
 
+#### Starting from an earlier date
+
+`checkout(startsAt: …)` books a service that is already running, e.g. a domain registered before
+the customer came to your app. If the first period from that date is still running, it is billed
+now and renews when it ends. An older start is refused with `period_already_ended`, unless you
+pass `billElapsedPeriods: true` with `maxNetAmount` (net, up to two decimals; both together, or
+`checkout()` throws an `InvalidArgumentException` without sending anything):
+
+- every period that has ended plus the running one is billed now, as one line with the full
+  service period. It lands on the user's collective order of the current month and is invoiced and
+  charged with the next monthly bill; nothing is back-dated.
+- the start may be at most about three years ago (422 otherwise).
+- if the periods come to more than `maxNetAmount`, nothing is booked: 409
+  `elapsed_amount_exceeded`, with the real amount in `$e->body()->net_amount` (e.g. `"20.76"`), so
+  you can show it and retry.
+- 409 `elapsed_periods_not_allowed` when the subscription can't be billed this way (e.g. it ran
+  before, replaces another one, or is billed by the hour or day with a monthly cap).
+
+```php
+try {
+    $subscription->checkout(startsAt: $startsAt, billElapsedPeriods: true, maxNetAmount: $confirmed);
+} catch (ApiException $e) {
+    if ($e->error === 'elapsed_amount_exceeded') {
+        $actual = $e->body()->net_amount; // ask again with the real amount
+    } else {
+        throw $e;
+    }
+}
+```
+
+#### Error codes
+
 Failures throw `Anikeen\Id\Exceptions\ApiException` with `status` (0 = not reachable), a stable
 `error` code (`already_active`, `already_cancelled`, `not_active`, `already_paused`,
 `already_resumed`, `billing_address_missing`, `not_changeable`, `subscription_not_found`,
-`idempotency_key_conflict`) and `isNotFound()`, `isConflict()`, `isTemporary()`:
+`idempotency_key_conflict`, `period_already_ended`, `elapsed_periods_not_allowed`,
+`elapsed_amount_exceeded`), the error response via `body()` and `isNotFound()`, `isConflict()`,
+`isTemporary()`:
 
 ```php
 try {
@@ -615,6 +654,29 @@ While a session is open, its subscriptions can't be checked out or repriced by t
 `cancelled` or `expired` (`isOpen()`, `isCompleted()`, `isCancelled()` for cancelled or expired).
 `subscription.activated` / `subscription.cancelled` are still sent per subscription, before the
 `checkout.*` event of the session.
+
+### User accounts (trusted apps, no user token)
+
+Trusted apps can look up and create Anikeen ID accounts with the app's own token. Email addresses
+are matched regardless of case.
+
+```php
+$anikeenId = app(AnikeenId::class);
+
+$account = $anikeenId->findUserByEmail('erika@example.com'); // null if no account uses it
+$account?->data->id;                   // also name, email, email_verified, has_billing_address
+
+$result = $anikeenId->createUser([     // finds the account of the email address or creates it
+    'name' => 'Erika Mustermann',
+    'email' => 'erika@example.com',
+    'send_invitation' => true,         // a new account gets a mail with a link to set a password
+]);
+$result->data->created;                // false: the account already existed (and is unchanged)
+$result->data->invitation_sent;        // only for an account created by this call without a password
+```
+
+`findUserByEmail()` changes nothing. It throws `ApiException` when the request fails for any reason
+other than an unknown address.
 
 
 ## API authentication
@@ -833,6 +895,7 @@ public function sshKeysByUserId(string $userId): SshKeys
 ```php
 public function getAuthedUser(): Result
 public function createUser(array $attributes): Result
+public function findUserByEmail(string $email): ?Result
 public function findOrCreateSocialiteUser(string $provider, string $providerId, ?string $email = null, ?string $name = null): Result
 public function refreshToken(string $storedRefreshToken, string $scope = ''): Result
 public function isEmailExisting(string $email): Result
