@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 3.3.0 (2026-11-06)
 
 App billing features; they need an Anikeen ID release that supports them.
 
