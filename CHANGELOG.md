@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 3.2.0 (2026-11-06)
+
+Elapsed-period billing and user lookup; they need an Anikeen ID release that supports them.
 
 - `AppSubscription::checkout()` takes `billElapsedPeriods` and `maxNetAmount`: a subscription
   started more than one period ago is billed for its elapsed periods too, up to the given net
