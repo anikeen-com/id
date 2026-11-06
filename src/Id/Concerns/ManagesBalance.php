@@ -63,4 +63,4 @@ trait ManagesBalance
             ])))
             ->setBillable($this);
     }
-}
+}
