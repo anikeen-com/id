@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-Preferences; they need an Anikeen ID release that supports them.
+Preferences, charges and the billing limit; they need an Anikeen ID release that supports them.
 
 ### Added
 
@@ -18,6 +18,13 @@ Preferences; they need an Anikeen ID release that supports them.
   `PreconditionFailedException` (a subclass of `ApiException`) for 412 with `currentVersion()`.
 - Scopes `Scope::PREFERENCES`, `PREFERENCES_READ` and `PREFERENCES_CLIENT`.
 - Webhook event `order.refunded` (`EventType::ORDER_REFUNDED`).
+- Charges on a user's monthly bill for trusted apps: `createChargeForUser()` (with an idempotency
+  key), `findChargeForUser()` and `voidChargeForUser()`; `Resources\AppCharge`.
+- The user's billing limit for trusted apps: `billingLimitForUser()` and `Resources\BillingLimit`
+  (`allows()` is advisory); the `billing_limit` key of `billingOverview()` is documented.
+- `ApiException::isBillingLimitReached()` for 409 `billing_limit_reached`.
+- Opt-in webhook events `billing_limit.reached` and `billing_limit.available`
+  (`EventType::BILLING_LIMIT_REACHED`, `BILLING_LIMIT_AVAILABLE`).
 - An optional trailing `$headers` argument on `AnikeenId::request()`, `get()`, `post()`, `put()`,
   `delete()` and `AppRequest::send()`; calls without it send the same request as before.
 
