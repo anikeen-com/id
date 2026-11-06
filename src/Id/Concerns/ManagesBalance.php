@@ -31,7 +31,13 @@ trait ManagesBalance
 
     /**
      * Billing overview of the current user: current_balance, current_charges, vat_rate,
-     * has_billing_address, has_default_payment_method, open_orders.
+     * has_billing_address, has_default_payment_method, open_orders and billing_limit.
+     *
+     * billing_limit is the user's monthly billing limit {object: "billing_limit", user_id,
+     * currency, basis, limit, used, remaining, remaining_net, vat_rate, reached, resets_at,
+     * version} (`limit`, `remaining` and `remaining_net` null without a limit; wrap it in
+     * `new \Anikeen\Id\Resources\BillingLimit(…)` for its helpers), or null while the user has no
+     * limit and can't set one yet. Older Anikeen ID releases don't send the key.
      *
      * @throws Throwable
      */
@@ -57,4 +63,4 @@ trait ManagesBalance
             ])))
             ->setBillable($this);
     }
-}
+}

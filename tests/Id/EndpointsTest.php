@@ -55,6 +55,36 @@ class EndpointsTest extends TestCase
         $this->assertSame('GET /api/v1/billing Bearer user-token', $this->sentCall(0));
     }
 
+    public function test_billing_overview_carries_the_billing_limit(): void
+    {
+        $this->respond(200, ['data' => ['current_charges' => 11.9, 'billing_limit' => ['object' => 'billing_limit', 'limit' => '50.00', 'used' => '11.90', 'remaining' => '38.10', 'reached' => false, 'version' => 3]]]);
+
+        $limit = new \Anikeen\Id\Resources\BillingLimit($this->owner()->billingOverview()->billing_limit);
+
+        $this->assertSame('38.10', $limit->remaining());
+        $this->assertTrue($limit->allows('38.10'));
+        $this->assertNull($limit->usedByApp());
+    }
+
+    public function test_charges_and_billing_limits_of_users_use_the_app_token(): void
+    {
+        $charge = ['data' => ['object' => 'charge', 'id' => '01JCHARGE', 'status' => 'open']];
+        $this->respond(201, $charge);
+        $this->respond(200, $charge);
+        $this->respond(200, $charge);
+        $this->respond(200, ['data' => ['object' => 'billing_limit', 'limit' => null]]);
+
+        app(AnikeenId::class)->createChargeForUser('01JUSER', ['idempotency_key' => 'k', 'name' => 'Card', 'quantity' => 1, 'unit_price' => '4.00']);
+        app(AnikeenId::class)->findChargeForUser('01JUSER', '01JCHARGE');
+        app(AnikeenId::class)->voidChargeForUser('01JUSER', '01JCHARGE');
+        app(AnikeenId::class)->billingLimitForUser('01JUSER');
+
+        $this->assertSame('POST /api/v1/client/users/01JUSER/charges Bearer app-token', $this->sentCall(0));
+        $this->assertSame('GET /api/v1/client/users/01JUSER/charges/01JCHARGE Bearer app-token', $this->sentCall(1));
+        $this->assertSame('POST /api/v1/client/users/01JUSER/charges/01JCHARGE/void Bearer app-token', $this->sentCall(2));
+        $this->assertSame('GET /api/v1/client/users/01JUSER/billing-limit Bearer app-token', $this->sentCall(3));
+    }
+
     public function test_invoice_download_url_is_read_not_updated(): void
     {
         $this->respond(200, $this->list([['id' => 'inv1']]));

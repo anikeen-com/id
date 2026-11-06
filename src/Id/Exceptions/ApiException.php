@@ -80,6 +80,16 @@ class ApiException extends ResourceException
     }
 
     /**
+     * A charge was refused because it would take the user's open monthly bill above their billing
+     * limit (409 "billing_limit_reached"). body() has limit, used, remaining, remaining_net,
+     * required, currency and resets_at.
+     */
+    public function isBillingLimitReached(): bool
+    {
+        return $this->status === 409 && $this->error === 'billing_limit_reached';
+    }
+
+    /**
      * The ID service could not be reached (network error, timeout) or failed (5xx): retry later.
      */
     public function isTemporary(): bool
