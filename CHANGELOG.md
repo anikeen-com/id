@@ -1,5 +1,26 @@
 # Changelog
 
+## Unreleased
+
+Preferences; they need an Anikeen ID release that supports them.
+
+### Added
+
+- Preferences of any user with the app's token (trusted apps, registered by Anikeen per
+  namespace): `preferencesByUserId()`, `preferenceByUserId()`, `setPreferenceByUserId()`,
+  `deletePreferenceByUserId()` and `findUserIdByPreference()` (the user holding a value of a unique
+  key, `null` when nobody does).
+- The user's shared preferences with their token: `globalPreferences()`, `globalPreference()`,
+  `setGlobalPreference()` and `deleteGlobalPreference()` on `Billable`, cached per instance.
+- `Resources\Preference` and `Resources\Preferences`; `Enums\SharedPreference` and
+  `Enums\Appearance`.
+- Conditional writes: `ifVersion` (`If-Match`) and `createOnly` (`If-None-Match: *`);
+  `PreconditionFailedException` (a subclass of `ApiException`) for 412 with `currentVersion()`.
+- Scopes `Scope::PREFERENCES`, `PREFERENCES_READ` and `PREFERENCES_CLIENT`.
+- Webhook event `order.refunded` (`EventType::ORDER_REFUNDED`).
+- An optional trailing `$headers` argument on `AnikeenId::request()`, `get()`, `post()`, `put()`,
+  `delete()` and `AppRequest::send()`; calls without it send the same request as before.
+
 ## 3.3.0 (2026-11-06)
 
 App billing features; they need an Anikeen ID release that supports them.
