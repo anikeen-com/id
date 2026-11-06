@@ -76,6 +76,14 @@ class WebhookTest extends TestCase
         $this->assertContains(EventType::ORDER_REFUNDED, EventType::all());
     }
 
+    public function test_billing_limit_events_have_their_own_types(): void
+    {
+        $this->assertSame('billing_limit.reached', EventType::BILLING_LIMIT_REACHED);
+        $this->assertSame('billing_limit.available', EventType::BILLING_LIMIT_AVAILABLE);
+        $this->assertContains(EventType::BILLING_LIMIT_REACHED, EventType::all());
+        $this->assertContains(EventType::BILLING_LIMIT_AVAILABLE, EventType::all());
+    }
+
     public function test_a_change_carries_the_previous_attributes(): void
     {
         $this->payload = json_encode(['id' => '01JEVT', 'type' => EventType::SUBSCRIPTION_UPDATED, 'created' => time(), 'data' => [
