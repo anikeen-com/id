@@ -61,6 +61,21 @@ final class EventType
     /** A checkout session was not confirmed within 24 hours; its drafts were cancelled. */
     public const CHECKOUT_EXPIRED = 'checkout.expired';
 
+    /**
+     * A user's open monthly bill reached their billing limit: start no new paid service for them.
+     * `data.object` is the billing limit as the app reads it (with `version`), `data.reason`
+     * `booking` or `limit_changed`. Opt-in: only endpoints that select this event get it (not
+     * through `*`), and only apps that may read the limit of a user connected to them.
+     */
+    public const BILLING_LIMIT_REACHED = 'billing_limit.reached';
+
+    /**
+     * A user whose billing limit was reached has room again. `data.object` is the billing limit
+     * (with `version`), `data.reason` `limit_changed`, `limit_removed`, `voided`, `period_reset`
+     * or `order_changed`. Opt-in like BILLING_LIMIT_REACHED.
+     */
+    public const BILLING_LIMIT_AVAILABLE = 'billing_limit.available';
+
     public const TEST = 'webhook.test';
 
     /**
