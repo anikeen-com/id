@@ -13,6 +13,12 @@ final class EventType
     public const ORDER_PAYMENT_FAILED = 'order.payment_failed';
     public const ORDER_CANCELLED = 'order.cancelled';
     public const ORDER_SHIPPED = 'order.shipped';
+    /**
+     * Money was given back for an order (a refund or a partial cancellation, with a credit note);
+     * see the order's `refunds` and `refunded_total`. A full refund also cancels the order
+     * (order.cancelled follows).
+     */
+    public const ORDER_REFUNDED = 'order.refunded';
 
     public const SUBSCRIPTION_CREATED = 'subscription.created';
     public const SUBSCRIPTION_ACTIVATED = 'subscription.activated';
