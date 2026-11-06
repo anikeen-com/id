@@ -18,6 +18,22 @@ App billing features; they need an Anikeen ID release that supports them.
   `subscription.updated` and `subscription.renewed` (`EventType::SUBSCRIPTION_*`);
   `data.reason` with `CancellationReason::TRIAL_ENDED_WITHOUT_PAYMENT_METHOD`.
 
+## 3.2.0 (2026-11-06)
+
+Elapsed-period billing and user lookup; they need an Anikeen ID release that supports them.
+
+- `AppSubscription::checkout()` takes `billElapsedPeriods` and `maxNetAmount`: a subscription
+  started more than one period ago is billed for its elapsed periods too, up to the given net
+  amount (409 `elapsed_amount_exceeded` with `net_amount`, `elapsed_periods_not_allowed`). Calls
+  without the new arguments send the same request as before.
+- `ApiException::body()` returns the JSON body of Anikeen ID's error response, e.g. its
+  `net_amount`.
+- Add `AnikeenId::findUserByEmail()` for trusted apps: looks up an account by email address
+  (regardless of case) without creating one, null when there is none.
+- `createUser()` documents `name`, `password_confirmation` and `send_invitation` (a newly created
+  account gets an invitation mail to set a password) and the response fields `created` and
+  `invitation_sent`.
+
 ## 3.1.0 (2026-11-05)
 
 - Add the scope `products:read` (`Scope::PRODUCTS_READ`) for read-only access to the product APIs

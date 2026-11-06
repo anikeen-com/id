@@ -6,6 +6,7 @@ use Anikeen\Id\Concerns\HasSubscriptionStatus;
 use Anikeen\Id\Exceptions\ApiException;
 use Anikeen\Id\Support\AppRequest;
 use DateTimeInterface;
+use InvalidArgumentException;
 use JsonSerializable;
 
 /**
@@ -129,15 +130,46 @@ class AppSubscription implements JsonSerializable
      * $startsAt (in the past) books a service that is already running, e.g. a domain registered
      * earlier: the first period runs from $startsAt, is billed now and renews when it ends.
      *
-     * @throws ApiException 409 "already_active", "billing_address_missing", "period_already_ended", …
+     * A $startsAt older than one period is refused ("period_already_ended") unless
+     * $billElapsedPeriods is set: then the periods that have already ended are billed too, together
+     * with the running one, as long as they come to at most $maxNetAmount (net, up to two
+     * decimals) and $startsAt lies within the maximum age Anikeen ID accepts (about three years).
+     * The lines land on the current month's collective order, which is charged on the 1st of the
+     * next month. $billElapsedPeriods needs both $startsAt and $maxNetAmount.
+     *
+     * @throws ApiException 409 "already_active", "billing_address_missing", "period_already_ended",
+     *     "elapsed_periods_not_allowed" (the elapsed periods can't be billed for this subscription),
+     *     "elapsed_amount_exceeded" (they come to more than $maxNetAmount; the response body has
+     *     the booked `net_amount`), …; 422 invalid input (e.g. a start older than the maximum age)
+     * @throws InvalidArgumentException $billElapsedPeriods without $startsAt or $maxNetAmount
      */
-    public function checkout(DateTimeInterface|string|null $startsAt = null): self
-    {
+    public function checkout(
+        DateTimeInterface|string|null $startsAt = null,
+        bool $billElapsedPeriods = false,
+        float|string|null $maxNetAmount = null,
+    ): self {
         if ($startsAt instanceof DateTimeInterface) {
             $startsAt = $startsAt->format(DateTimeInterface::ATOM);
         }
 
-        return $this->send('PUT', '/checkout', $startsAt === null ? null : ['starts_at' => $startsAt]);
+        if (!$billElapsedPeriods) {
+            return $this->send('PUT', '/checkout', $startsAt === null ? null : ['starts_at' => $startsAt]);
+        }
+
+        if ($startsAt === null || $startsAt === '') {
+            throw new InvalidArgumentException('Billing elapsed periods needs a start date ($startsAt).');
+        }
+
+        if ($maxNetAmount === null || $maxNetAmount === '') {
+            throw new InvalidArgumentException('Billing elapsed periods needs a maximum net amount ($maxNetAmount).');
+        }
+
+        return $this->send('PUT', '/checkout', [
+            'starts_at' => $startsAt,
+            'bill_elapsed_periods' => true,
+            // floats from calculations may carry binary noise (e.g. 59.970000000000006)
+            'max_net_amount' => is_float($maxNetAmount) ? round($maxNetAmount, 2) : $maxNetAmount,
+        ]);
     }
 
     /**
