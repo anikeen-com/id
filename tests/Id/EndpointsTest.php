@@ -283,4 +283,133 @@ class EndpointsTest extends TestCase
 
         $this->assertSame(['items' => [], 'billing_address' => ['country_iso' => 'DE']], $this->sentJson(0));
     }
+
+    private function preference(string $namespace, string $key, mixed $value, int $version = 7): array
+    {
+        return ['namespace' => $namespace, 'key' => $key, 'value' => $value, 'version' => $version, 'updated_at' => '2026-11-06T10:00:00.000000Z', 'updated_by' => ['type' => 'app', 'client_id' => 'app-client']];
+    }
+
+    private function conditions(int $index): array
+    {
+        $request = $this->sent[$index]['request'];
+
+        return [$request->getHeaderLine('If-Match'), $request->getHeaderLine('If-None-Match')];
+    }
+
+    public function test_global_preferences_of_the_user(): void
+    {
+        $this->respond(200, ['data' => [$this->preference('global', 'appearance', 'dark')]]);
+
+        $preferences = $this->owner()->globalPreferences();
+
+        $this->assertSame('dark', $preferences->get('appearance'));
+        $this->assertSame('GET /api/v1/preferences/global Bearer user-token', $this->sentCall(0));
+    }
+
+    public function test_global_preference_with_a_default(): void
+    {
+        $this->respond(200, ['data' => [$this->preference('global', 'appearance', 'light')]]);
+
+        $owner = $this->owner();
+
+        $this->assertSame('light', $owner->globalPreference('appearance'));
+        $this->assertSame('system', $owner->globalPreference('unknown', 'system'));
+        $this->assertCount(1, $this->sent);
+        $this->assertSame('GET /api/v1/preferences/global Bearer user-token', $this->sentCall(0));
+    }
+
+    public function test_set_global_preference(): void
+    {
+        $this->respond(201, ['data' => $this->preference('global', 'appearance', 'dark', 8)]);
+        $this->respond(200, ['data' => $this->preference('global', 'appearance', 'light', 9)]);
+
+        $created = $this->owner()->setGlobalPreference('appearance', 'dark');
+        $updated = $this->owner()->setGlobalPreference('appearance', 'light', ifVersion: 8);
+
+        $this->assertTrue($created->wasCreated());
+        $this->assertFalse($updated->wasCreated());
+        $this->assertSame(9, $updated->version);
+        $this->assertSame('PUT /api/v1/preferences/global/appearance Bearer user-token', $this->sentCall(0));
+        $this->assertSame(['value' => 'dark'], $this->sentJson(0));
+        $this->assertSame(['', ''], $this->conditions(0));
+        $this->assertSame(['"8"', ''], $this->conditions(1));
+    }
+
+    public function test_delete_global_preference(): void
+    {
+        $this->respond(204);
+        $this->respond(204);
+
+        $this->owner()->deleteGlobalPreference('appearance');
+        $this->owner()->deleteGlobalPreference('appearance', ifVersion: 9);
+
+        $this->assertSame('DELETE /api/v1/preferences/global/appearance Bearer user-token', $this->sentCall(0));
+        $this->assertSame('', (string) $this->sent[0]['request']->getBody());
+        $this->assertSame(['', ''], $this->conditions(0));
+        $this->assertSame(['"9"', ''], $this->conditions(1));
+    }
+
+    public function test_preferences_by_user_id(): void
+    {
+        $this->respond(200, ['data' => [$this->preference('acme', 'plan', 'pro'), $this->preference('acme', 'theme', ['accent' => 'blue'])]]);
+
+        $preferences = app(AnikeenId::class)->preferencesByUserId('01JUSER', 'acme');
+
+        $this->assertEquals(['plan' => 'pro', 'theme' => (object) ['accent' => 'blue']], $preferences->values());
+        $this->assertSame('blue', $preferences->find('theme')->value->accent);
+        $this->assertNull($preferences->find('missing'));
+        $this->assertSame('GET /api/v1/client/users/01JUSER/preferences/acme Bearer app-token', $this->sentCall(0));
+    }
+
+    public function test_preference_by_user_id(): void
+    {
+        $this->respond(200, ['data' => $this->preference('acme', 'plan', 'pro')]);
+
+        $preference = app(AnikeenId::class)->preferenceByUserId('01JUSER', 'acme', 'plan');
+
+        $this->assertSame('pro', $preference->value);
+        $this->assertSame(7, $preference->version);
+        $this->assertSame('GET /api/v1/client/users/01JUSER/preferences/acme/plan Bearer app-token', $this->sentCall(0));
+    }
+
+    public function test_set_preference_by_user_id(): void
+    {
+        $this->respond(200, ['data' => $this->preference('acme', 'plan', 'pro')]);
+        $this->respond(200, ['data' => $this->preference('acme', 'plan', 'pro')]);
+        $this->respond(201, ['data' => $this->preference('acme', 'plan', 'pro')]);
+
+        $anikeenId = app(AnikeenId::class);
+        $anikeenId->setPreferenceByUserId('01JUSER', 'acme', 'plan', 'pro');
+        $anikeenId->setPreferenceByUserId('01JUSER', 'acme', 'plan', 'pro', ifVersion: 7);
+        $anikeenId->setPreferenceByUserId('01JUSER', 'acme', 'plan', 'pro', createOnly: true);
+
+        $this->assertSame('PUT /api/v1/client/users/01JUSER/preferences/acme/plan Bearer app-token', $this->sentCall(0));
+        $this->assertSame(['value' => 'pro'], $this->sentJson(0));
+        $this->assertSame(['', ''], $this->conditions(0));
+        $this->assertSame(['"7"', ''], $this->conditions(1));
+        $this->assertSame(['', '*'], $this->conditions(2));
+    }
+
+    public function test_delete_preference_by_user_id(): void
+    {
+        $this->respond(204);
+        $this->respond(204);
+
+        app(AnikeenId::class)->deletePreferenceByUserId('01JUSER', 'acme', 'plan');
+        app(AnikeenId::class)->deletePreferenceByUserId('01JUSER', 'acme', 'plan', ifVersion: 7);
+
+        $this->assertSame('DELETE /api/v1/client/users/01JUSER/preferences/acme/plan Bearer app-token', $this->sentCall(0));
+        $this->assertSame(['', ''], $this->conditions(0));
+        $this->assertSame(['"7"', ''], $this->conditions(1));
+    }
+
+    public function test_find_user_id_by_preference(): void
+    {
+        $this->respond(200, ['data' => ['user_id' => '01JUSER', 'namespace' => 'acme', 'key' => 'customer_id', 'version' => 7, 'updated_at' => '2026-11-06T10:00:00.000000Z']]);
+
+        $this->assertSame('01JUSER', app(AnikeenId::class)->findUserIdByPreference('acme', 'customer_id', 'cus_123'));
+        $this->assertSame('POST /api/v1/client/preferences/acme/lookup Bearer app-token', $this->sentCall(0));
+        $this->assertSame(['key' => 'customer_id', 'value' => 'cus_123'], $this->sentJson(0));
+        $this->assertSame('', $this->sent[0]['request']->getUri()->getQuery());
+    }
 }

@@ -2,6 +2,7 @@
 
 namespace Anikeen\Id;
 
+use Anikeen\Id\Concerns\ManagesPreferences;
 use Anikeen\Id\Concerns\ManagesPricing;
 use Anikeen\Id\Concerns\ManagesProducts;
 use Anikeen\Id\Concerns\ManagesShippingLabels;
@@ -23,6 +24,7 @@ use Illuminate\Contracts\Auth\Authenticatable;
 class AnikeenId
 {
     use OauthTrait;
+    use ManagesPreferences;
     use ManagesPricing;
     use ManagesProducts;
     use ManagesShippingLabels;

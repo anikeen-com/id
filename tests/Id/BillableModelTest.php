@@ -19,6 +19,8 @@ class BillableModelTest extends TestCase
                 foreach (['addresses', 'countries', 'defaultPaymentMethod', 'invoices', 'orders', 'paymentMethods', 'subscriptions', 'transactions', 'userData'] as $name) {
                     $this->{$name.'Cache'} = 'cached';
                 }
+
+                $this->preferencesCache['global'] = 'cached';
             }
         };
         $user->email = 'ada@example.com';
