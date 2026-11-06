@@ -28,10 +28,16 @@ class ApiException extends ResourceException
     public static function fromResult(Result $result): static
     {
         $body = is_object($result->data) ? $result->data : null;
+        $status = $result->response()?->getStatusCode() ?? 0;
+
+        // a failed conditional write; subclasses (CollectionException) keep their own type
+        if ($status === 412 && static::class === self::class) {
+            return PreconditionFailedException::fromResult($result);
+        }
 
         return new static(
             rtrim((string) ($body->message ?? $result->error()), '.'),
-            $result->response()?->getStatusCode() ?? 0,
+            $status,
             $body->error ?? null,
             $result->exception,
         );
