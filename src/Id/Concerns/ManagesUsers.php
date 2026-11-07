@@ -6,6 +6,7 @@ namespace Anikeen\Id\Concerns;
 use Anikeen\Id\ApiOperations\Get;
 use Anikeen\Id\ApiOperations\Post;
 use Anikeen\Id\Exceptions\ApiException;
+use Anikeen\Id\Resources\User;
 use Anikeen\Id\Result;
 use Anikeen\Id\Support\AppRequest;
 use Throwable;
@@ -87,6 +88,30 @@ trait ManagesUsers
             return AppRequest::send('POST', 'v1/admin/users/lookup', ['email' => $email]);
         } catch (ApiException $e) {
             // only Anikeen ID's own answer means "no account", not e.g. an unknown route
+            if ($e->isNotFound() && $e->error === 'user_not_found') {
+                return null;
+            }
+
+            throw $e;
+        }
+    }
+
+    /**
+     * The profile of a user connected to your app, by their Anikeen ID (trusted apps, app token),
+     * e.g. to catch up on a missed user.updated webhook. The email address is returned even while
+     * it isn't verified (emailVerified() is false then). No scope needed.
+     *
+     * @return User|null null when the user is unknown, deleted or not connected to your app
+     *     (404 "user_not_found"; the three look the same)
+     * @throws ApiException 403 "client_not_allowed" (not a trusted app), 429 "too_many_requests",
+     *     or another failure
+     */
+    public function findUserById(string $userId): ?User
+    {
+        try {
+            return new User(AppRequest::send('GET', sprintf('v1/client/users/%s', rawurlencode($userId)))->data);
+        } catch (ApiException $e) {
+            // only Anikeen ID's own answer means "no such user", not e.g. an unknown route
             if ($e->isNotFound() && $e->error === 'user_not_found') {
                 return null;
             }
