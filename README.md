@@ -16,12 +16,13 @@ subscriptions and physical goods, with invoices, VAT and payment handled by Anik
 3. [Sign in with Anikeen ID](#sign-in-with-anikeen-id)
 4. [Payments](#payments)
 5. [Trusted apps](#trusted-apps)
-6. [Preferences](#preferences)
-7. [API authentication](#api-authentication)
-8. [General](#general)
-9. [Examples](#examples)
-10. [Documentation](#documentation)
-11. [Development](#development)
+6. [User profiles](#user-profiles)
+7. [Preferences](#preferences)
+8. [API authentication](#api-authentication)
+9. [General](#general)
+10. [Examples](#examples)
+11. [Documentation](#documentation)
+12. [Development](#development)
 
 ## Installation
 
@@ -181,6 +182,8 @@ these scopes for its product and reseller APIs:
 A full reseller scope includes reading. `user` and `*` do not open the reseller endpoints: the
 token has to carry the reseller scope itself. For the product APIs there is only `products:read`;
 changing products needs `user`.
+
+Changing the user's [profile](#user-profiles) needs `Scope::USER` (`user`); `user:read` only reads.
 
 Anikeen ID's [preferences](#preferences) use these scopes:
 
@@ -571,6 +574,71 @@ refund or a partial cancellation, with a credit note); the order carries its `re
 `refunded_total`. A full refund also cancels the order, so `order.cancelled` is sent too; don't rely on the
 order of the two events.
 
+#### User and preference events
+
+These events are about the user rather than your app's orders. They are **opt-in**: select them
+explicitly for your endpoint, `*` doesn't include them.
+
+| Type | Constant | Sent to | `data` |
+|------|----------|---------|--------|
+| `user.updated` | `EventType::USER_UPDATED` | apps the user is connected to (untrusted apps only with a token of the user carrying `user`, `user:read` or `*`), the app that made the change included | `object`: the full profile `{object: "user", id, name, username, email, email_verified, avatar, version}`; `changed`: the changed fields, e.g. `["name", "avatar"]` (never old values) |
+| `user.deleted` | `EventType::USER_DELETED` | apps the user was connected to | `object`: `{object: "user", id, deleted: true, deleted_at}` |
+| `preference.updated` | `EventType::PREFERENCE_UPDATED` | [trusted](#trusted-apps) apps that may read the namespace, never the app that made the change | `object`: `{object: "preference", user_id, namespace, key, version, deleted, updated_at, updated_by: {type: "user"\|"app", client_id}}`, never the value |
+
+```json
+{"id": "01JEVT…", "type": "user.updated", "created": 1762500000,
+  "data": {"object": {"object": "user", "id": "01JUSER…", "name": "Erika Mustermann", "username": "erika",
+    "email": "erika@example.com", "email_verified": true,
+    "avatar": "https://id.anikeen.com/avatars/01JUSER…", "version": 8},
+  "changed": ["name", "avatar"]}}
+```
+
+- **`user.updated`** is sent for changes to `name`, `username`, the verified email address,
+  `email_verified` and the profile picture, from any source (the user's settings, the
+  [profile API](#changing-the-profile-user-token), support). **A new email address arrives only
+  once it is verified**: `email` is `null` while the address isn't, and a requested change sends
+  nothing until the user confirms it (then `changed` is `["email", "email_verified"]` or
+  `["email"]`). `avatar` is a stable URL; `avatar` in `changed` means the picture behind it changed:
+  drop a cached copy. `new User($object)` (`Anikeen\Id\Resources\User`) reads the object.
+- **Versions:** `version` grows with every such change (`profile_version` in the REST shapes).
+  Events can arrive late or out of order: keep the highest version you have seen and ignore older
+  ones. A missed event can be caught up with [`findUserById()`](#reading-a-user-by-id-trusted-apps).
+- **`user.deleted`** is final and sent once: delete or anonymise your copy of the account (and
+  what you keep only for it), and stop acting for the user. No other event about the user follows
+  it, also none still queued. If a `user.updated` arrives later for the same ID, support restored
+  the account: treat it as a returning user.
+- **`preference.updated`** is thin: fetch the preference again (`preferenceByUserId()`) or drop your
+  copy when `deleted` is `true`, and ignore events with a lower `version` than the one you hold
+  (versions are per user). Nothing is sent for a write that changes nothing, and none when the
+  account is deleted (`user.deleted` covers that).
+
+```php
+use Anikeen\Id\Resources\User;
+
+$object = $event['data']['object'];
+
+if ($event['type'] === EventType::USER_UPDATED) {
+    $profile = new User($object);
+    $account = Account::firstWhere('anikeen_id', $profile->id());
+
+    if ($account && $profile->version() > $account->profile_version) {
+        $account->update([
+            'name' => $profile->name(),
+            'email' => $profile->email() ?? $account->email, // null while unverified
+            'profile_version' => $profile->version(),
+        ]);
+    }
+}
+
+if ($event['type'] === EventType::USER_DELETED) {
+    Account::firstWhere('anikeen_id', $object['id'])?->anonymise();
+}
+
+if ($event['type'] === EventType::PREFERENCE_UPDATED) {
+    Cache::forget("preferences:{$object['user_id']}");
+}
+```
+
 ### Errors
 
 Every failed request throws `Anikeen\Id\Exceptions\ApiException`, with the user's token as
@@ -586,6 +654,11 @@ well as with the app's (`app*()`). It carries:
   would take the user's monthly bill above their billing limit),
 - `body()`: the error response, for errors with details (e.g. `remaining` of
   `billing_limit_reached`).
+
+Refused input (422) throws `ValidationFailedException`, a subclass of `ApiException`. Endpoints
+with codes per field (the [profile API](#changing-the-profile-user-token)) fill `errorCodes()`
+(`['username' => 'username_taken']`), `errorCodeFor($field)` and `hasErrorCode($code)`; `errors()`
+has the messages per field.
 
 ```php
 use Anikeen\Id\Exceptions\ApiException;
@@ -1065,6 +1138,81 @@ $result->data->invitation_sent;        // only for an account created by this ca
 other than an unknown address.
 
 
+## User profiles
+
+### Changing the profile (user token)
+
+With a token of the user carrying `Scope::USER` (`user`), your app can change the user's name,
+username, email address and profile picture. Each call returns the updated profile
+(`Anikeen\Id\Resources\User`) and clears the cached `getUserData()`.
+
+```php
+use Anikeen\Id\Exceptions\ValidationFailedException;
+
+try {
+    $profile = $user->updateProfile([          // only the fields sent change
+        'name' => 'Erika Mustermann',
+        'username' => 'erika',
+        'email' => 'erika.new@example.com',
+    ]);
+} catch (ValidationFailedException $e) {
+    return back()->withErrors(match ($e->errorCodeFor('username')) {
+        'username_taken' => ['username' => 'This username is taken.'],
+        default => $e->errors(),
+    });
+}
+
+$profile->email();                  // still the current address
+$profile->pendingEmail();           // "erika.new@example.com" until the user confirms it
+$profile->pendingEmailExpiresAt();
+
+$user->uploadAvatar($request->file('avatar'));                         // a path or a file
+$user->uploadAvatar($path, ['x' => 120, 'y' => 40, 'size' => 512]);    // a square, in pixels
+$user->removeAvatar();                                                  // back to the initials
+```
+
+- **Email addresses** never change right away. Anikeen ID mails a confirmation link to the new
+  address and a notice to the current one; the new address becomes the user's address only once
+  they confirm it, signed in to Anikeen ID. Until then the current one stays valid for sign-in and
+  mails, and `user.updated` follows the confirmation. A new request replaces a pending one; a
+  pending address is dropped after 7 days (`pendingEmailExpiresAt()`).
+- **Pictures:** jpeg, png, webp or gif, at most 5 MB and 64 to 8000 pixels per side; without
+  `crop` the centre is used. The `avatar` URL stays the same when the picture changes.
+- **Limits:** 30 requests a minute per app and user, new email addresses 5 an hour and picture
+  uploads 10 an hour per user (429 `too_many_requests` with `Retry-After`). Requests with an address
+  that is taken count too.
+
+| Status | `error` |
+|--------|---------|
+| 401 | `unauthenticated` |
+| 403 | `missing_scope` (no `user` scope), `user_token_required` (an app token: there is no user to change) |
+| 413 | `avatar_too_large` (the upload is larger than the server accepts) |
+| 422 | `ValidationFailedException`, codes per field: `name_invalid`, `username_taken`, `username_invalid`, `email_taken`, `email_invalid`, `avatar_invalid`, `avatar_too_large`, `crop_invalid`, else `validation_failed` |
+| 429 | `too_many_requests` |
+
+Branch on the codes, the messages are for people and may change.
+
+### Reading a user by ID (trusted apps)
+
+[Trusted apps](#trusted-apps) can read the profile of a user connected to them (a token of the
+user, a subscription or an order of the app) with the app's own token, e.g. to catch up on a
+missed `user.updated`:
+
+```php
+$profile = app(AnikeenId::class)->findUserById($user->anikeen_id); // null: unknown, deleted or not connected
+
+$profile?->name();
+$profile?->email();          // returned even while unverified
+$profile?->emailVerified();
+$profile?->avatar();
+$profile?->version();        // compare with the version of user.updated
+$profile?->locale;           // also username, created_at
+```
+
+It throws `ApiException` for 403 `client_not_allowed` (not a trusted app), 429
+`too_many_requests` and other failures. The profile carries no billing or account data; read those
+through their own endpoints.
+
 ## Preferences
 
 Anikeen ID keeps small per-user settings as JSON values under a *namespace* and a *key*, so they
@@ -1205,7 +1353,9 @@ Anikeen ID is the source of truth. `globalPreferences()` and `globalPreference()
 on the model instance (one request per instance); `setGlobalPreference()` and
 `deleteGlobalPreference()` clear it. For a copy that outlives the request, keep a read cache: fill
 it at sign-in, write to Anikeen ID first and update the copy from the response, and let it expire
-after about an hour, since other apps and the user can change shared preferences too:
+after about an hour, since other apps and the user can change shared preferences too (trusted
+apps can select the [`preference.updated`](#user-and-preference-events) webhook to drop it
+sooner):
 
 ```php
 $appearance = Cache::remember("appearance:{$user->id}", now()->addHour(),
@@ -1447,6 +1597,7 @@ public function sshKeysByUserId(string $userId): SshKeys
 public function getAuthedUser(): Result
 public function createUser(array $attributes): Result
 public function findUserByEmail(string $email): ?Result
+public function findUserById(string $userId): ?User
 public function findOrCreateSocialiteUser(string $provider, string $providerId, ?string $email = null, ?string $name = null): Result
 public function refreshToken(string $storedRefreshToken, string $scope = ''): Result
 public function isEmailExisting(string $email): Result
@@ -1519,6 +1670,9 @@ public function getBillable(): Billable
 
 ```php
 public function profilePortalUrl(?string $returnUrl = null, array $options = []): string
+public function updateProfile(array $attributes): User
+public function uploadAvatar(SplFileInfo|string $file, ?array $crop = null): User
+public function removeAvatar(): User
 public function setBillable(Billable|Model $billable): self
 public function getBillable(): Billable
 ```
