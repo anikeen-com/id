@@ -1,30 +1,9 @@
 # Changelog
 
-## Unreleased
+## 3.4.0 (2026-11-07)
 
-User profiles and the user and preference webhooks; they need an Anikeen ID release that supports
-them.
-
-### Added
-
-- Profile updates with the user's token (scope `user`): `updateProfile()` (name, username, email;
-  a new email address waits for the user's confirmation), `uploadAvatar()` and `removeAvatar()` on
-  `Billable`. They return the updated profile and clear the cached `getUserData()`.
-- Reading a connected user's profile by ID for trusted apps: `findUserById()` (`null` for an
-  unknown, deleted or unconnected user).
-- `Resources\User` with `emailVerified()`, `version()` (`profile_version` or a webhook's
-  `version`), `pendingEmail()` and `pendingEmailExpiresAt()`; it also reads the object of a
-  `user.updated` event.
-- `ValidationFailedException` (a subclass of `ApiException`) for 422 responses, with
-  `errorCodes()`, `errorCodeFor()`, `hasErrorCode()` and `errors()`; catching `ApiException` keeps
-  working.
-- `AnikeenId::requestMultipart()` for file uploads.
-- Opt-in webhook events `user.updated`, `user.deleted` and `preference.updated`
-  (`EventType::USER_UPDATED`, `USER_DELETED`, `PREFERENCE_UPDATED`).
-
-## 3.4.0-beta.1 (2026-11-06)
-
-Preferences, charges and the billing limit; they need an Anikeen ID release that supports them.
+Preferences, charges, the billing limit, user profiles and the user and preference webhooks; they
+need an Anikeen ID release that supports them.
 
 ### Added
 
@@ -49,6 +28,20 @@ Preferences, charges and the billing limit; they need an Anikeen ID release that
   (`EventType::BILLING_LIMIT_REACHED`, `BILLING_LIMIT_AVAILABLE`).
 - An optional trailing `$headers` argument on `AnikeenId::request()`, `get()`, `post()`, `put()`,
   `delete()` and `AppRequest::send()`; calls without it send the same request as before.
+- Profile updates with the user's token (scope `user`): `updateProfile()` (name, username, email;
+  a new email address waits for the user's confirmation), `uploadAvatar()` and `removeAvatar()` on
+  `Billable`. They return the updated profile and clear the cached `getUserData()`.
+- Reading a connected user's profile by ID for trusted apps: `findUserById()` (`null` for an
+  unknown, deleted or unconnected user).
+- `Resources\User` with `emailVerified()`, `version()` (`profile_version` or a webhook's
+  `version`), `pendingEmail()` and `pendingEmailExpiresAt()`; it also reads the object of a
+  `user.updated` event.
+- `ValidationFailedException` (a subclass of `ApiException`) for 422 responses, with
+  `errorCodes()`, `errorCodeFor()`, `hasErrorCode()` and `errors()`; catching `ApiException` keeps
+  working.
+- `AnikeenId::requestMultipart()` for file uploads.
+- Opt-in webhook events `user.updated`, `user.deleted` and `preference.updated`
+  (`EventType::USER_UPDATED`, `USER_DELETED`, `PREFERENCE_UPDATED`).
 
 ## 3.3.0 (2026-11-06)
 
