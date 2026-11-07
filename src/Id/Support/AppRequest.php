@@ -6,6 +6,7 @@ use Anikeen\Id\AnikeenId;
 use Anikeen\Id\Contracts\AppTokenRepository;
 use Anikeen\Id\Exceptions\ApiException;
 use Anikeen\Id\Exceptions\PreconditionFailedException;
+use Anikeen\Id\Exceptions\ValidationFailedException;
 use Anikeen\Id\Result;
 use GuzzleHttp\Exception\GuzzleException;
 use Throwable;
@@ -13,7 +14,7 @@ use Throwable;
 /**
  * Sends a request with the app's own token (client credentials). A rejected token is renewed
  * once; every failure ends in an ApiException with status and error code (a 412 in a
- * PreconditionFailedException).
+ * PreconditionFailedException, a 422 in a ValidationFailedException).
  */
 final class AppRequest
 {
@@ -36,7 +37,11 @@ final class AppRequest
 
         if (!$result->success()) {
             $body = is_object($result->data) ? $result->data : null;
-            $exception = $result->status === 412 ? PreconditionFailedException::class : ApiException::class;
+            $exception = match ($result->status) {
+                412 => PreconditionFailedException::class,
+                422 => ValidationFailedException::class,
+                default => ApiException::class,
+            };
 
             throw new $exception(
                 sprintf('Anikeen ID request %s %s failed: %s', $method, $path, $body->message ?? $result->error()),

@@ -35,6 +35,11 @@ class ApiException extends ResourceException
             return PreconditionFailedException::fromResult($result);
         }
 
+        // refused input, with per-field codes on some endpoints
+        if ($status === 422 && static::class === self::class) {
+            return ValidationFailedException::fromResult($result);
+        }
+
         return new static(
             rtrim((string) ($body->message ?? $result->error()), '.'),
             $status,
