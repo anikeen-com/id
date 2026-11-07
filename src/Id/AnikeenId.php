@@ -398,6 +398,32 @@ class AnikeenId
     }
 
     /**
+     * Send a multipart/form-data request (file uploads), with the same headers and error handling
+     * as request(), which stays JSON only.
+     *
+     * @param list<array{name: string, contents: mixed, filename?: string, headers?: array<string, string>}> $multipart
+     *     Guzzle's multipart parts
+     * @throws GuzzleException
+     * @throws RequestRequiresClientIdException
+     */
+    public function requestMultipart(string $method, string $path, array $multipart): Result
+    {
+        try {
+            $response = $this->client->request($method, $path, [
+                // no Content-Type: Guzzle sets it with the boundary
+                'headers' => $this->buildHeaders(),
+                'multipart' => $multipart,
+            ]);
+
+            $result = new Result($response, null, $this);
+        } catch (RequestException $exception) {
+            $result = new Result($exception->getResponse(), $exception, $this);
+        }
+
+        return $result;
+    }
+
+    /**
      * Build headers for request.
      *
      * @throws RequestRequiresClientIdException
