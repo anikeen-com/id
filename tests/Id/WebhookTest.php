@@ -84,6 +84,16 @@ class WebhookTest extends TestCase
         $this->assertContains(EventType::BILLING_LIMIT_AVAILABLE, EventType::all());
     }
 
+    public function test_user_and_preference_events_have_their_own_types(): void
+    {
+        $this->assertSame('preference.updated', EventType::PREFERENCE_UPDATED);
+        $this->assertSame('user.updated', EventType::USER_UPDATED);
+        $this->assertSame('user.deleted', EventType::USER_DELETED);
+        $this->assertContains(EventType::PREFERENCE_UPDATED, EventType::all());
+        $this->assertContains(EventType::USER_UPDATED, EventType::all());
+        $this->assertContains(EventType::USER_DELETED, EventType::all());
+    }
+
     public function test_a_change_carries_the_previous_attributes(): void
     {
         $this->payload = json_encode(['id' => '01JEVT', 'type' => EventType::SUBSCRIPTION_UPDATED, 'created' => time(), 'data' => [

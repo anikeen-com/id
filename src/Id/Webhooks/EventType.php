@@ -76,6 +76,34 @@ final class EventType
      */
     public const BILLING_LIMIT_AVAILABLE = 'billing_limit.available';
 
+    /**
+     * A preference of a user was set, changed or deleted. Thin, never the value: `data.object` is
+     * `{object: "preference", user_id, namespace, key, version, deleted, updated_at, updated_by:
+     * {type: "user"|"app", client_id}}`; fetch the preference again (or drop your copy when
+     * `deleted`) and ignore events with a lower version than the one you hold. Opt-in (not through
+     * `*`); only to trusted apps that may read the namespace, never to the app that made the change.
+     */
+    public const PREFERENCE_UPDATED = 'preference.updated';
+
+    /**
+     * The profile of a user connected to your app changed: name, username, the verified email
+     * address, email_verified or the avatar. `data.object` is the full profile `{object: "user", id,
+     * name, username, email, email_verified, avatar, version}` (Resources\User), `data.changed` names
+     * the changed fields (never their old values). An email address appears only once verified
+     * (`email` is null while it isn't); `avatar` in `changed` means the picture behind the stable URL
+     * changed. Keep the highest `version` and ignore older events. Opt-in (not through `*`); also
+     * sent to the app that made the change.
+     */
+    public const USER_UPDATED = 'user.updated';
+
+    /**
+     * A user connected to your app deleted their account (or it was deleted): delete or anonymise
+     * it and treat it as final. `data.object` is `{object: "user", id, deleted: true, deleted_at}`.
+     * Sent once; no other event about the user follows. A later user.updated for the same ID means
+     * the account was restored. Opt-in (not through `*`).
+     */
+    public const USER_DELETED = 'user.deleted';
+
     public const TEST = 'webhook.test';
 
     /**
