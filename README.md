@@ -1187,7 +1187,7 @@ $user->removeAvatar();                                                  // back 
 | 401 | `unauthenticated` |
 | 403 | `missing_scope` (no `user` scope), `user_token_required` (an app token: there is no user to change) |
 | 413 | `avatar_too_large` (the upload is larger than the server accepts) |
-| 422 | `ValidationFailedException`, codes per field: `name_invalid`, `username_taken`, `username_invalid`, `email_taken`, `email_invalid`, `avatar_invalid`, `avatar_too_large`, `crop_invalid`, else `validation_failed` |
+| 422 | `ValidationFailedException`, codes per field: `name_invalid`, `username_taken`, `username_invalid`, `email_taken`, `email_invalid`, `avatar_invalid`, `avatar_too_large`, `crop_invalid` (keyed by `crop.x`, `crop.y` or `crop.size`; `errorCodeFor('crop')` finds it), else `validation_failed` |
 | 429 | `too_many_requests` |
 
 Branch on the codes, the messages are for people and may change.

@@ -19,9 +19,25 @@ class ValidationFailedException extends ApiException
         return is_object($codes) || is_array($codes) ? array_map('strval', (array) $codes) : [];
     }
 
+    /**
+     * The code of $field, or of its first failed sub-field when the codes are keyed by those
+     * (`crop` finds `crop.x`, `crop.y` or `crop.size`).
+     */
     public function errorCodeFor(string $field): ?string
     {
-        return $this->errorCodes()[$field] ?? null;
+        $codes = $this->errorCodes();
+
+        if (isset($codes[$field])) {
+            return $codes[$field];
+        }
+
+        foreach ($codes as $key => $code) {
+            if (str_starts_with((string) $key, $field . '.')) {
+                return $code;
+            }
+        }
+
+        return null;
     }
 
     /**

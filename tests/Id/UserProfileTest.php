@@ -198,6 +198,36 @@ class UserProfileTest extends TestCase
         }
     }
 
+    public function test_crop_codes_are_found_under_the_crop_field(): void
+    {
+        $path = tempnam(sys_get_temp_dir(), 'avatar');
+        file_put_contents($path, 'a picture');
+        $this->respond(422, $this->validationError(['crop.size' => 'crop_invalid']));
+
+        try {
+            $this->owner()->uploadAvatar($path, ['x' => 0, 'y' => 0]);
+            $this->fail('No exception thrown');
+        } catch (ValidationFailedException $e) {
+            $this->assertSame('crop_invalid', $e->errorCodeFor('crop'));
+            $this->assertSame('crop_invalid', $e->errorCodeFor('crop.size'));
+            $this->assertNull($e->errorCodeFor('cro'));
+            $this->assertNull($e->errorCodeFor('avatar'));
+        } finally {
+            unlink($path);
+        }
+    }
+
+    public function test_an_unreadable_file_throws_before_anything_is_sent(): void
+    {
+        try {
+            $this->owner()->uploadAvatar(sys_get_temp_dir() . '/missing-avatar-' . uniqid() . '.png');
+            $this->fail('No exception thrown');
+        } catch (\RuntimeException $e) {
+            $this->assertNotInstanceOf(ApiException::class, $e);
+            $this->assertCount(0, $this->sent);
+        }
+    }
+
     public function test_remove_avatar_deletes_the_upload_and_clears_the_cache(): void
     {
         $owner = $this->owner();

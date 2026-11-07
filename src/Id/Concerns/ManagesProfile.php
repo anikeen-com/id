@@ -72,9 +72,10 @@ trait ManagesProfile
      * @param array{x: int, y: int, size: int}|null $crop the square to use, in pixels of the
      *     upright picture; the centre without one
      * @throws ValidationFailedException 422 with the codes "avatar_invalid", "avatar_too_large",
-     *     "crop_invalid"
+     *     "crop_invalid" (keyed by crop.x, crop.y or crop.size; errorCodeFor('crop') finds them)
      * @throws ApiException 413 "avatar_too_large", 401, 403 "missing_scope", "user_token_required",
      *     429 "too_many_requests" (also more than 10 uploads an hour)
+     * @throws \RuntimeException when the file can't be opened (nothing is sent then)
      */
     public function uploadAvatar(string|SplFileInfo $file, ?array $crop = null): User
     {
@@ -129,4 +130,4 @@ trait ManagesProfile
 
         return new User($result->data);
     }
-}
+}
