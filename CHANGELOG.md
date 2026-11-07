@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+The user's role for trusted apps; it needs an Anikeen ID release that sends it.
+
+### Added
+
+- `Enums\Role` (`ADMIN`, `USER`): the user's Anikeen ID role, seen by trusted apps only.
+- The Socialite user carries it as `$user->role` (`null` for other apps).
+- `Resources\User::role()` and `isAdmin()`, for a user read by ID (`findUserById()`) and the
+  `data.object` of `user.updated`, which for trusted apps carries `role` (and `role` in `changed`).
+
 ## 3.4.0 (2026-11-07)
 
 Preferences, charges, the billing limit, user profiles and the user and preference webhooks; they

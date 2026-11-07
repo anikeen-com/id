@@ -148,6 +148,22 @@ Route::get('auth/callback', function () {
 });
 ```
 
+### The user's role (trusted apps)
+
+[Trusted apps](#trusted-apps) also get the user's Anikeen ID role, `admin` (runs Anikeen) or
+`user` (constants on `Anikeen\Id\Enums\Role`); for other apps it is `null`. An app can make
+Anikeen ID admins its own admins this way instead of keeping a list of its own. Read it at sign-in
+and keep it current with the `user.updated` webhook (`role` in `changed`, see
+[User profiles](#user-profiles)):
+
+```php
+use Anikeen\Id\Enums\Role;
+
+$account = Socialite::driver('anikeen')->user();
+
+$user->update(['role' => $account->role ?? Role::USER]);
+```
+
 Access tokens expire. Get a new one with the refresh token (or send the user through the login
 again):
 
@@ -1207,7 +1223,13 @@ $profile?->emailVerified();
 $profile?->avatar();
 $profile?->version();        // compare with the version of user.updated
 $profile?->locale;           // also username, created_at
+$profile?->role();           // Role::ADMIN or Role::USER (trusted apps only)
+$profile?->isAdmin();
 ```
+
+The `data.object` of `user.updated` is the same profile (`new \Anikeen\Id\Resources\User($event['data']['object'])`);
+for trusted apps it carries `role`, and a change of the role alone (`changed` is `["role"]`) is
+sent to them only.
 
 It throws `ApiException` for 403 `client_not_allowed` (not a trusted app), 429
 `too_many_requests` and other failures. The profile carries no billing or account data; read those

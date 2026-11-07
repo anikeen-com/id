@@ -92,7 +92,8 @@ final class EventType
      * the changed fields (never their old values). An email address appears only once verified
      * (`email` is null while it isn't); `avatar` in `changed` means the picture behind the stable URL
      * changed. Keep the highest `version` and ignore older events. Opt-in (not through `*`); also
-     * sent to the app that made the change.
+     * sent to the app that made the change. Trusted apps also get `role` (Enums\Role) and `role` in
+     * `changed`; a change of the role alone reaches only them.
      */
     public const USER_UPDATED = 'user.updated';
 
