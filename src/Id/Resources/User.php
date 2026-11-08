@@ -2,6 +2,7 @@
 
 namespace Anikeen\Id\Resources;
 
+use Anikeen\Id\Enums\Role;
 use DateTimeImmutable;
 use JsonSerializable;
 
@@ -27,6 +28,7 @@ use JsonSerializable;
  * @property ?string $created_at REST shapes
  * @property ?string $pending_email profile updates only: a new address waiting for confirmation
  * @property ?string $pending_email_expires_at profile updates only
+ * @property ?string $role trusted apps only: Role::ADMIN or Role::USER
  */
 class User implements JsonSerializable
 {
@@ -95,6 +97,22 @@ class User implements JsonSerializable
     public function version(): int
     {
         return (int) ($this->data->profile_version ?? $this->data->version ?? 0);
+    }
+
+    /**
+     * Role::ADMIN or Role::USER; null for apps that aren't trusted (they never see it).
+     */
+    public function role(): ?string
+    {
+        return $this->data->role ?? null;
+    }
+
+    /**
+     * An Anikeen ID admin (trusted apps only; false when the role isn't known).
+     */
+    public function isAdmin(): bool
+    {
+        return $this->role() === Role::ADMIN;
     }
 
     /**

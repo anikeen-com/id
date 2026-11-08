@@ -83,6 +83,8 @@ class Provider extends AbstractProvider implements ProviderInterface
             'name' => $user['name'],
             'email' => Arr::get($user, 'email'),
             'avatar' => $user['avatar'],
+            // trusted apps only (Enums\Role), null for others: $socialiteUser->role
+            'role' => Arr::get($user, 'role'),
         ]);
     }
 
