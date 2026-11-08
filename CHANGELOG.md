@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 3.5.0 (2026-11-08)
 
 The user's role for trusted apps; it needs an Anikeen ID release that sends it.
 
