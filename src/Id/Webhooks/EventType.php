@@ -105,6 +105,15 @@ final class EventType
      */
     public const USER_DELETED = 'user.deleted';
 
+    /**
+     * A user removed an app's access in Anikeen ID (Settings → Connected apps), or Anikeen revoked
+     * the app or no longer trusts it: the app's tokens for that user stop working. `data.object` is
+     * `{object: "app_access", user_id, client: {id, name}, revoked_at}`. Sent to trusted apps that
+     * hold data the revoked app managed for the user (e.g. the Anikeen Console). Opt-in (not
+     * through `*`).
+     */
+    public const APP_ACCESS_REVOKED = 'app_access.revoked';
+
     public const TEST = 'webhook.test';
 
     /**

@@ -43,8 +43,27 @@ class Scope
     const SSH_KEYS_READ = 'ssh-keys:read';
 
     // Products of the Anikeen Console (servers, floating IPs, hosting, domains, zones, object storage),
-    // read-only. Changing products needs `user`; there is no full `products` scope.
+    // read-only. Changing products needs `user` or the product family's scope below; there is no
+    // full `products` scope.
     const PRODUCTS_READ = 'products:read';
+
+    // One product family of the Anikeen Console each: the full scope reads, changes and orders
+    // products of the family, `:read` only reads them. Tokens of apps acting for a user (trusted
+    // apps) need these; `user` does not count for them.
+    const CONSOLE_SERVERS = 'console-servers'; // servers and their floating IPs
+    const CONSOLE_SERVERS_READ = 'console-servers:read';
+    const CONSOLE_CONTAINERS = 'console-containers';
+    const CONSOLE_CONTAINERS_READ = 'console-containers:read';
+    const CONSOLE_DOMAINS = 'console-domains';
+    const CONSOLE_DOMAINS_READ = 'console-domains:read';
+    const CONSOLE_ZONES = 'console-zones';
+    const CONSOLE_ZONES_READ = 'console-zones:read';
+    const CONSOLE_HOSTING = 'console-hosting';
+    const CONSOLE_HOSTING_READ = 'console-hosting:read';
+    const CONSOLE_LOAD_BALANCERS = 'console-load-balancers';
+    const CONSOLE_LOAD_BALANCERS_READ = 'console-load-balancers:read';
+    const CONSOLE_OBJECT_STORAGE = 'console-object-storage';
+    const CONSOLE_OBJECT_STORAGE_READ = 'console-object-storage:read';
 
     // Reseller API of the Anikeen Console. A full scope includes reading; `user` and `*` do not
     // open these endpoints, a token must carry the reseller scope itself.

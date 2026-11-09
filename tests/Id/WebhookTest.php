@@ -105,4 +105,10 @@ class WebhookTest extends TestCase
 
         $this->assertSame(9.99, $event['data']['previous_attributes']['price']);
     }
+
+    public function test_the_app_access_revoked_event_is_known(): void
+    {
+        $this->assertSame('app_access.revoked', EventType::APP_ACCESS_REVOKED);
+        $this->assertContains(EventType::APP_ACCESS_REVOKED, EventType::all());
+    }
 }

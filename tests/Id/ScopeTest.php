@@ -64,4 +64,24 @@ class ScopeTest extends TestCase
             'reseller-orders' => ['reseller-orders'],
         ], $groups);
     }
+
+    public function test_each_console_product_family_has_a_full_and_a_read_scope(): void
+    {
+        $groups = collect((new ReflectionClass(Scope::class))->getConstants())
+            ->filter(fn (string $scope) => str_starts_with($scope, 'console-'))
+            ->groupBy(fn (string $scope) => explode(':', $scope)[0])
+            ->map(fn ($scopes) => $scopes->sort()->values()->all())
+            ->all();
+
+        $families = ['servers', 'containers', 'domains', 'zones', 'hosting', 'load-balancers', 'object-storage'];
+
+        $this->assertSame(
+            collect($families)->mapWithKeys(fn (string $family) => ["console-$family" => ["console-$family", "console-$family:read"]])->sortKeys()->all(),
+            collect($groups)->sortKeys()->all()
+        );
+        $this->assertSame('console-containers', Scope::CONSOLE_CONTAINERS);
+        $this->assertSame('console-containers:read', Scope::CONSOLE_CONTAINERS_READ);
+        $this->assertSame('console-load-balancers', Scope::CONSOLE_LOAD_BALANCERS);
+        $this->assertSame('console-object-storage:read', Scope::CONSOLE_OBJECT_STORAGE_READ);
+    }
 }

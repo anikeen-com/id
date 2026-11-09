@@ -196,8 +196,24 @@ these scopes for its product and reseller APIs:
 | `reseller-orders` | `Scope::RESELLER_ORDERS` | order products for customers, charged right away |
 
 A full reseller scope includes reading. `user` and `*` do not open the reseller endpoints: the
-token has to carry the reseller scope itself. For the product APIs there is only `products:read`;
-changing products needs `user`.
+token has to carry the reseller scope itself.
+
+Each product family of the Console has its own pair of scopes: the full scope reads, changes and
+orders products of that family, `:read` only reads them.
+
+| Family | Full scope | Read-only scope |
+|--------|------------|-----------------|
+| Servers (with their floating IPs) | `console-servers` (`Scope::CONSOLE_SERVERS`) | `console-servers:read` |
+| Containers | `console-containers` (`Scope::CONSOLE_CONTAINERS`) | `console-containers:read` |
+| Domains | `console-domains` (`Scope::CONSOLE_DOMAINS`) | `console-domains:read` |
+| DNS zones | `console-zones` (`Scope::CONSOLE_ZONES`) | `console-zones:read` |
+| Web hosting | `console-hosting` (`Scope::CONSOLE_HOSTING`) | `console-hosting:read` |
+| Load balancers | `console-load-balancers` (`Scope::CONSOLE_LOAD_BALANCERS`) | `console-load-balancers:read` |
+| Object storage | `console-object-storage` (`Scope::CONSOLE_OBJECT_STORAGE`) | `console-object-storage:read` |
+
+A [trusted app](#trusted-apps) acting in the Console for its users asks for these scopes in the
+login (e.g. `console-containers`); for app tokens the Console accepts only them, not `user`.
+Personal access tokens may use them too, or `user` / `products:read` as before.
 
 Changing the user's [profile](#user-profiles) needs `Scope::USER` (`user`); `user:read` only reads.
 
@@ -1461,6 +1477,43 @@ Route::middleware(['auth:api', CheckScopes::using('user')])->post(...);         
 Route::middleware(['auth:api', CheckForAnyScope::using('user', 'user:read')])->get(...);  // any scope
 ```
 
+The token also tells which app it was issued to. Anikeen ID adds a `client` claim with the app's
+name and whether Anikeen trusts it; tokens issued before that have none:
+
+```php
+$request->user()->anikeenTokenClientId();       // the OAuth client (the token's `aud`)
+$request->user()->anikeenTokenClientName();     // e.g. "Shop", or null
+$request->user()->anikeenTokenClientTrusted();  // true only for trusted apps
+```
+
+#### Users that are not known yet
+
+By default a token of a user your app does not know leaves the request unauthenticated. To create
+the user instead (e.g. because a trusted app calls your API for one of its users, who never signed
+in to your app), register a callback, e.g. in `AppServiceProvider::boot()`. It gets the token's
+claims, the user's profile (`GET v1/user` read with that token; with `verify_revocation` the
+answer of that check is reused) and the raw token, and returns the new user or `null`:
+
+```php
+use Anikeen\Id\AnikeenId;
+
+AnikeenId::provisionUsersUsing(function (stdClass $claims, array $profile, string $token) {
+    if (($claims->client->trusted ?? null) !== true || empty($profile['email_verified_at'])) {
+        return null; // 401 as before
+    }
+
+    return User::create([
+        'anikeen_id' => $claims->sub,
+        'name' => $profile['name'],
+        'email' => $profile['email'],
+    ]);
+});
+```
+
+Exceptions the callback throws are not caught (e.g. an `HttpException` with `409` for an e-mail
+address that belongs to another account). It is not called for the token cookie or for client
+credentials tokens.
+
 Options in `config/services.php` (`anikeen`):
 
 | Key | Default | |
@@ -1471,7 +1524,9 @@ Options in `config/services.php` (`anikeen`):
 | `verify_revocation` | `false` | also ask Anikeen ID (`GET v1/user`) whether the token is still valid, so revoked tokens stop working before they expire; fails closed when Anikeen ID is unreachable |
 | `revocation_cache_ttl` | `300` | seconds that answer is cached per token |
 
-The key is read once per process. In tests `AnikeenId::actingAs($user, ['user'])` signs in without a token.
+The key is read once per process. In tests `AnikeenId::actingAs($user, ['user'])` signs in without a
+token; further claims go in the fourth argument, e.g. `AnikeenId::actingAs($user,
+['console-containers'], 'api', ['aud' => $clientId, 'client' => ['name' => 'Shop', 'trusted' => true]])`.
 
 ## General
 

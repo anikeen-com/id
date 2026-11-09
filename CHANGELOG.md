@@ -1,5 +1,25 @@
 # Changelog
 
+## Unreleased
+
+Scopes and guard support for apps acting in the Anikeen Console for a user; the `client` claim and
+`app_access.revoked` need an Anikeen ID release that sends them.
+
+### Added
+
+- Scopes per product family of the Anikeen Console, full and `:read`: `Scope::CONSOLE_SERVERS`,
+  `CONSOLE_CONTAINERS`, `CONSOLE_DOMAINS`, `CONSOLE_ZONES`, `CONSOLE_HOSTING`,
+  `CONSOLE_LOAD_BALANCERS` and `CONSOLE_OBJECT_STORAGE` (`console-servers`, …).
+- `AnikeenId::provisionUsersUsing()`: the `anikeen` guard lets a callback create an unknown user of a
+  valid bearer token (with the token's claims and the user's profile) instead of answering `401`.
+  With `verify_revocation` the profile of that check is reused, otherwise it is read once.
+- `HasAnikeenTokens::anikeenTokenClientId()`, `anikeenTokenClientName()` and
+  `anikeenTokenClientTrusted()` from the token's `aud` and new `client` claim; the guard also sets
+  the request attribute `oauth_client_name`.
+- `AnikeenId::actingAs()` takes further token claims as an optional fourth argument.
+- `EventType::APP_ACCESS_REVOKED` (`app_access.revoked`, opt-in): a user removed an app's access, or
+  Anikeen revoked the app or no longer trusts it.
+
 ## 3.5.0 (2026-11-08)
 
 The user's role for trusted apps; it needs an Anikeen ID release that sends it.

@@ -46,6 +46,50 @@ trait HasAnikeenTokens
     }
 
     /**
+     * The OAuth client (app) the current token was issued to (its `aud`), or null (e.g. the token
+     * cookie, AnikeenId::actingAs() without claims).
+     */
+    public function anikeenTokenClientId(): ?string
+    {
+        $audience = $this->accessToken->aud ?? null;
+
+        if (is_array($audience)) {
+            $audience = $audience[0] ?? null;
+        }
+
+        return is_scalar($audience) && (string) $audience !== '' ? (string) $audience : null;
+    }
+
+    /**
+     * The name of the app the current token was issued to (`client.name`), or null.
+     */
+    public function anikeenTokenClientName(): ?string
+    {
+        $name = $this->clientClaim()['name'] ?? null;
+
+        return is_string($name) && $name !== '' ? $name : null;
+    }
+
+    /**
+     * Whether the current token was issued to an app Anikeen trusts (`client.trusted`). False when
+     * the token does not say so, e.g. tokens issued before Anikeen ID sent the claim.
+     */
+    public function anikeenTokenClientTrusted(): bool
+    {
+        return ($this->clientClaim()['trusted'] ?? null) === true;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function clientClaim(): array
+    {
+        $client = $this->accessToken->client ?? null;
+
+        return is_object($client) || is_array($client) ? (array) $client : [];
+    }
+
+    /**
      * Set the current access token for the user.
      */
     public function withAnikeenAccessToken(stdClass $accessToken): self

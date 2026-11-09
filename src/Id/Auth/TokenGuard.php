@@ -5,6 +5,7 @@ namespace Anikeen\Id\Auth;
 use Anikeen\Id\AnikeenId;
 use Anikeen\Id\HasAnikeenTokens;
 use Anikeen\Id\Helpers\JwtParser;
+use Anikeen\Id\Result;
 use Exception;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
@@ -29,9 +30,19 @@ use Throwable;
  * With `services.anikeen.verify_revocation` the token is also checked against Anikeen ID
  * (GET v1/user, cached per token for `services.anikeen.revocation_cache_ttl` seconds), so
  * revoked tokens stop working before they expire.
+ *
+ * With AnikeenId::provisionUsersUsing() an unknown user of a valid bearer token is created by
+ * the app's callback (just-in-time) instead of leaving the request unauthenticated.
  */
 class TokenGuard
 {
+    /**
+     * The user's profile from this request's revocation check (GET v1/user), if it ran.
+     *
+     * @var array<string, mixed>|null
+     */
+    private ?array $profile = null;
+
     public function __construct(
         protected UserProvider $provider,
         private Encrypter $encrypter,
@@ -73,7 +84,8 @@ class TokenGuard
         }
 
         /** @var Authenticatable|HasAnikeenTokens|null $user */
-        $user = $this->retrieveUser((string) $token->sub);
+        $user = $this->retrieveUser((string) $token->sub)
+            ?? $this->provisionUser($token, (string) $request->bearerToken());
 
         return $user && method_exists($user, 'withAnikeenAccessToken')
             ? $user->withAnikeenAccessToken($token)
@@ -96,6 +108,7 @@ class TokenGuard
         $request->attributes->set('oauth_access_token_id', $decoded->jti ?? null);
         $request->attributes->set('oauth_client_id', $decoded->aud ?? null);
         $request->attributes->set('oauth_client_trusted', $decoded->client->trusted ?? null);
+        $request->attributes->set('oauth_client_name', $decoded->client->name ?? null);
         $request->attributes->set('oauth_user_id', $decoded->sub ?? null);
         $request->attributes->set('oauth_scopes', $decoded->scopes);
 
@@ -127,6 +140,7 @@ class TokenGuard
 
         if ($result->success()) {
             $active = true;
+            $this->profile = $this->profileFrom($result);
         } elseif (in_array($status, [401, 403], true)) {
             $active = false;
         } else {
@@ -140,6 +154,51 @@ class TokenGuard
         Cache::put($key, $active, $ttl);
 
         return $active;
+    }
+
+    /**
+     * Create the local user of a valid token through AnikeenId::provisionUsersUsing(), null
+     * without a callback or when Anikeen ID does not give the user's profile.
+     */
+    protected function provisionUser(stdClass $token, string $jwt): ?Authenticatable
+    {
+        if (!$provisioner = AnikeenId::userProvisioner()) {
+            return null;
+        }
+
+        if (!$profile = $this->profile ?? $this->fetchProfile($jwt)) {
+            return null;
+        }
+
+        $user = $provisioner($token, $profile, $jwt);
+
+        return $user instanceof Authenticatable ? $user : null;
+    }
+
+    /**
+     * The user's profile (GET v1/user with the token), null when Anikeen ID does not answer it.
+     *
+     * @return array<string, mixed>|null
+     */
+    protected function fetchProfile(string $jwt): ?array
+    {
+        try {
+            $result = (clone app(AnikeenId::class))->withToken($jwt)->getAuthedUser();
+        } catch (Throwable) {
+            return null;
+        }
+
+        return $result->success() ? $this->profileFrom($result) : null;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function profileFrom(Result $result): ?array
+    {
+        $profile = json_decode(json_encode($result->data()), true);
+
+        return is_array($profile) && $profile !== [] ? $profile : null;
     }
 
     /**
