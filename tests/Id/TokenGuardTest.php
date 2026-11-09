@@ -62,6 +62,7 @@ class TokenGuardTest extends TestCase
             'id' => auth()->user()->anikeenTokenClientId(),
             'name' => auth()->user()->anikeenTokenClientName(),
             'trusted' => auth()->user()->anikeenTokenClientTrusted(),
+            'personal_access' => auth()->user()->anikeenTokenIsPersonalAccess(),
             'attribute_name' => request()->attributes->get('oauth_client_name'),
             'attribute_trusted' => request()->attributes->get('oauth_client_trusted'),
         ]);
@@ -330,6 +331,7 @@ class TokenGuardTest extends TestCase
             'id' => 'client-of-shop',
             'name' => 'Shop',
             'trusted' => true,
+            'personal_access' => false,
             'attribute_name' => 'Shop',
             'attribute_trusted' => true,
         ]);
@@ -341,13 +343,18 @@ class TokenGuardTest extends TestCase
             'id' => '019a0000-0000-7000-8000-000000000001',
             'name' => null,
             'trusted' => false,
+            'personal_access' => false,
             'attribute_name' => null,
             'attribute_trusted' => null,
         ]);
 
         // only a real `true` counts
-        $this->getJson('/client', ['Authorization' => 'Bearer '.$this->token(['client' => ['trusted' => 'yes']])])
-            ->assertOk()->assertJsonPath('trusted', false);
+        $this->getJson('/client', ['Authorization' => 'Bearer '.$this->token(['client' => ['trusted' => 'yes', 'personal_access' => 1]])])
+            ->assertOk()->assertJsonPath('trusted', false)->assertJsonPath('personal_access', false);
+
+        // a personal access token
+        $this->getJson('/client', ['Authorization' => 'Bearer '.$this->token(['client' => ['name' => 'Personal Access Client', 'trusted' => true, 'personal_access' => true]])])
+            ->assertOk()->assertJsonPath('personal_access', true);
     }
 
     public function test_acting_as_takes_further_claims(): void

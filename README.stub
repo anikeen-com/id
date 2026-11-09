@@ -1478,12 +1478,13 @@ Route::middleware(['auth:api', CheckForAnyScope::using('user', 'user:read')])->g
 ```
 
 The token also tells which app it was issued to. Anikeen ID adds a `client` claim with the app's
-name and whether Anikeen trusts it; tokens issued before that have none:
+name, whether Anikeen trusts it and whether it is a personal access token; tokens issued before that have none:
 
 ```php
 $request->user()->anikeenTokenClientId();       // the OAuth client (the token's `aud`)
 $request->user()->anikeenTokenClientName();     // e.g. "Shop", or null
 $request->user()->anikeenTokenClientTrusted();  // true only for trusted apps
+$request->user()->anikeenTokenIsPersonalAccess(); // a personal access token, not an app's
 ```
 
 #### Users that are not known yet

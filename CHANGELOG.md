@@ -14,7 +14,8 @@ Scopes and guard support for apps acting in the Anikeen Console for a user; the 
   valid bearer token (with the token's claims and the user's profile) instead of answering `401`.
   With `verify_revocation` the profile of that check is reused, otherwise it is read once.
 - `HasAnikeenTokens::anikeenTokenClientId()`, `anikeenTokenClientName()` and
-  `anikeenTokenClientTrusted()` from the token's `aud` and new `client` claim; the guard also sets
+  `anikeenTokenClientTrusted()` and `anikeenTokenIsPersonalAccess()` from the token's `aud` and new
+  `client` claim (`name`, `trusted`, `personal_access`); the guard also sets
   the request attribute `oauth_client_name`.
 - `AnikeenId::actingAs()` takes further token claims as an optional fourth argument.
 - `EventType::APP_ACCESS_REVOKED` (`app_access.revoked`, opt-in): a user removed an app's access, or

@@ -80,6 +80,15 @@ trait HasAnikeenTokens
     }
 
     /**
+     * Whether the current token is a personal access token (`client.personal_access`), which a
+     * user created for themselves rather than an app. False when the token does not say so.
+     */
+    public function anikeenTokenIsPersonalAccess(): bool
+    {
+        return ($this->clientClaim()['personal_access'] ?? null) === true;
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private function clientClaim(): array
