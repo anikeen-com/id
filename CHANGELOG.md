@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 3.6.0 (2026-11-09)
 
 Scopes and guard support for apps acting in the Anikeen Console for a user; the `client` claim and
 `app_access.revoked` need an Anikeen ID release that sends them.
@@ -21,7 +21,6 @@ Scopes and guard support for apps acting in the Anikeen Console for a user; the 
 - `EventType::APP_ACCESS_REVOKED` (`app_access.revoked`, opt-in): a user removed an app's access, or
   Anikeen revoked the app or no longer trusts it.
 - Guzzle 8 is allowed (`guzzlehttp/guzzle: ^7.8|^8.0`), so the package installs in a new Laravel 13 app.
-
 
 ### Changed
 
