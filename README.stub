@@ -122,14 +122,14 @@ access token from `anikeen_id_access_token`.
 
 ### Login and callback
 
-Ask for the scopes your app needs (see [Scope](src/Id/Enums/Scope.php)). To sell orders and
-subscriptions, a shop typically asks for:
+Ask for the scopes your app needs (see [Scope](src/Id/Enums/Scope.php) and
+[which call needs which](#scopes)). To sell orders and subscriptions, a shop typically asks for:
 
 ```php
 use Laravel\Socialite\Facades\Socialite;
 
 Route::get('auth/redirect', fn () => Socialite::driver('anikeen')
-    ->scopes(['user:read', 'addresses:read', 'orders', 'subscriptions'])
+    ->scopes(['user:read', 'addresses:read', 'payment-methods:read', 'orders', 'subscriptions'])
     ->redirect());
 
 Route::get('auth/callback', function () {
@@ -183,6 +183,32 @@ if ($result->success()) {
 Scopes follow one schema: `resource` grants full access, `resource:read` read-only access and
 `resource:client` access to what the app or token created itself. All of them are constants on
 `Anikeen\Id\Enums\Scope`, e.g. `Scope::ORDERS_READ`.
+
+**Anikeen ID checks them.** Every call with the user's token needs the scope of its area: reads
+take `<area>:read` or `<area>`, changes `<area>`. `user` (full access to the account) and `*`
+pass all of the areas below; `user:read` only reads the user. The `:client` scopes are for the
+app's own token (client credentials) and open nothing with a user token. Without the scope the call
+fails with `403` `missing_scope` (`ApiException`, the response lists the scopes that would pass).
+Anikeen ID rolls this out in two steps: first requests without the scope are only logged, then
+refused, so ask for the scopes now.
+
+| Methods (user token) | Read with | Change with |
+|---|---|---|
+| `getUserData()`, `balance()`, `charges()`, `vatRate()`, `socialiteUsers()`, `profilePortalUrl()`, the Socialite user | `user:read` | |
+| `updateProfile()`, `uploadAvatar()`, `removeAvatar()` | | `user` |
+| `billingOverview()` | `billing:read` | |
+| `charge()`, `billingPortalUrl()` | | `billing` |
+| `addresses()`, `hasDefaultBillingAddress()` (also `user:read`) | `addresses:read` | `addresses` |
+| `invoices()`, `getInvoiceTemporaryUrl()` | `invoices:read` (or `billing:read`) | |
+| `transactions()` | `transactions:read` | |
+| `orders()`, `orderItems()`, `shipments()`, `checkout()`, `revoke()` | `orders:read` | `orders` |
+| `paymentMethods()`, `defaultPaymentMethod()`, `hasDefaultPaymentMethod()`, `createSetupIntent()`, `setDefaultPaymentMethod()` | `payment-methods:read` | `payment-methods` |
+| `subscriptions()`, `checkoutSessions()` | `subscriptions:read` | `subscriptions` |
+| `sshKeys()` | `ssh-keys:read` | `ssh-keys` |
+| `globalPreferences()`, `setGlobalPreference()`, `deleteGlobalPreference()` | `preferences:read` | `preferences` (`user` doesn't count) |
+
+Without `user:read` (or `user`), `getAuthedUser()` returns only the user's `id`: enough for the
+guard's revocation check, but no profile.
 
 The Anikeen Console accepts personal access tokens and OAuth tokens (no client credentials) with
 these scopes for its product and reseller APIs:
@@ -1493,7 +1519,8 @@ By default a token of a user your app does not know leaves the request unauthent
 the user instead (e.g. because a trusted app calls your API for one of its users, who never signed
 in to your app), register a callback, e.g. in `AppServiceProvider::boot()`. It gets the token's
 claims, the user's profile (`GET v1/user` read with that token; with `verify_revocation` the
-answer of that check is reused) and the raw token, and returns the new user or `null`:
+answer of that check is reused) and the raw token, and returns the new user or `null`. A token
+without `user:read` (or `user`) gives a profile with only `id`, so check the fields you need:
 
 ```php
 use Anikeen\Id\AnikeenId;

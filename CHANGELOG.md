@@ -23,6 +23,17 @@ Scopes and guard support for apps acting in the Anikeen Console for a user; the 
 - Guzzle 8 is allowed (`guzzlehttp/guzzle: ^7.8|^8.0`), so the package installs in a new Laravel 13 app.
 
 
+### Changed
+
+- Anikeen ID enforces scopes on every call with a user's token (first only logged, then refused
+  with `403` `missing_scope`). Reads need `<area>:read` or `<area>`, changes `<area>`; `user` and
+  `*` pass all: `user:read` (user, Socialite, `vatRate()`, `balance()`), `user` (profile changes),
+  `billing:read` / `billing` (overview; `charge()`, `billingPortalUrl()`), `addresses:read` /
+  `addresses`, `invoices:read` (or `billing:read`), `transactions:read`, `orders:read` / `orders`
+  (also items and shipments), `payment-methods:read` / `payment-methods`, `subscriptions:read` /
+  `subscriptions` (also checkout sessions), `ssh-keys:read` / `ssh-keys`. The README lists the
+  scope of each method. Without `user:read`, `getAuthedUser()` returns only the user's `id`.
+
 ### Fixed
 
 - The `anikeen` guard treats a token whose `sub` equals its `aud` (a client credentials token, as Passport issues them) as one without a user, instead of looking up a user by the client id.
