@@ -22,6 +22,10 @@ Scopes and guard support for apps acting in the Anikeen Console for a user; the 
   Anikeen revoked the app or no longer trusts it.
 - Guzzle 8 is allowed (`guzzlehttp/guzzle: ^7.8|^8.0`), so the package installs in a new Laravel 13 app.
 
+
+### Fixed
+
+- The `anikeen` guard treats a token whose `sub` equals its `aud` (a client credentials token, as Passport issues them) as one without a user, instead of looking up a user by the client id.
 ## 3.5.0 (2026-11-08)
 
 The user's role for trusted apps; it needs an Anikeen ID release that sends it.

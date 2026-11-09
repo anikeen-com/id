@@ -166,6 +166,8 @@ class TokenGuardTest extends TestCase
             'foreign key' => ['Authorization' => 'Bearer '.$this->token([], $otherPrivate)],
             'unknown user' => ['Authorization' => 'Bearer '.$this->token(['sub' => 'nobody'])],
             'client credentials' => ['Authorization' => 'Bearer '.$this->token(['sub' => ''])],
+            // Passport puts the client id into `sub` of client credentials tokens
+            'client credentials (sub = aud)' => ['Authorization' => 'Bearer '.$this->token(['sub' => 'client-of-shop', 'aud' => 'client-of-shop'])],
         ];
 
         foreach ($cases as $case => $headers) {
@@ -289,6 +291,7 @@ class TokenGuardTest extends TestCase
 
         $this->getJson('/me', ['Authorization' => 'Bearer '.$this->token()])->assertOk()->assertJsonPath('email', 'alice@example.com');
         $this->getJson('/me', ['Authorization' => 'Bearer '.$this->token(['sub' => ''])])->assertUnauthorized();
+        $this->getJson('/me', ['Authorization' => 'Bearer '.$this->token(['sub' => 'client-of-shop', 'aud' => 'client-of-shop'])])->assertUnauthorized();
 
         $this->assertSame([], $calls);
         $this->assertCount(0, $this->sent);

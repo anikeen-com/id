@@ -1457,7 +1457,7 @@ The guard accepts `Authorization: Bearer <access token>` with an access token is
 public key and the time claims (`exp`, `nbf`, `iat`, 60 seconds leeway). The token's `sub` (the
 user's Anikeen ID) is looked up in the column `anikeen_id` of the user model: the provider's
 `column`, else `services.anikeen.user_id_column`, else `AnikeenId::useUserIdField()`. Tokens of
-unknown users, client credentials tokens (no `sub`), expired or forged tokens leave the request
+unknown users, client credentials tokens (their `sub` is the client id itself), expired or forged tokens leave the request
 unauthenticated, so `auth:api` answers `401 {"message": "Unauthenticated."}` to JSON requests.
 
 The user model uses `Anikeen\Id\HasAnikeenTokens`; the token's scopes are then available:

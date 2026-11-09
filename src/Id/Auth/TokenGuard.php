@@ -74,8 +74,9 @@ class TokenGuard
             return null;
         }
 
-        // client credentials tokens have no user
-        if (!is_scalar($token->sub ?? null) || (string) $token->sub === '') {
+        // client credentials tokens have no user: their `sub` is empty or (Passport / league
+        // oauth2-server) the client's own id, i.e. equal to `aud`
+        if (!is_scalar($token->sub ?? null) || (string) $token->sub === '' || $this->isClientCredentials($token)) {
             return null;
         }
 
@@ -113,6 +114,17 @@ class TokenGuard
         $request->attributes->set('oauth_scopes', $decoded->scopes);
 
         return $decoded;
+    }
+
+    /**
+     * A client credentials token: issued to an app for itself, `sub` = the client id (`aud`).
+     */
+    protected function isClientCredentials(stdClass $token): bool
+    {
+        $audience = $token->aud ?? null;
+        $audience = is_array($audience) ? ($audience[0] ?? null) : $audience;
+
+        return is_scalar($audience) && (string) $audience !== '' && (string) $token->sub === (string) $audience;
     }
 
     /**
