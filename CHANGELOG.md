@@ -1,5 +1,42 @@
 # Changelog
 
+## Unreleased
+
+Scopes and guard support for apps acting in the Anikeen Console for a user; the `client` claim and
+`app_access.revoked` need an Anikeen ID release that sends them.
+
+### Added
+
+- Scopes per product family of the Anikeen Console, full and `:read`: `Scope::CONSOLE_SERVERS`,
+  `CONSOLE_CONTAINERS`, `CONSOLE_DOMAINS`, `CONSOLE_ZONES`, `CONSOLE_HOSTING`,
+  `CONSOLE_LOAD_BALANCERS` and `CONSOLE_OBJECT_STORAGE` (`console-servers`, …).
+- `AnikeenId::provisionUsersUsing()`: the `anikeen` guard lets a callback create an unknown user of a
+  valid bearer token (with the token's claims and the user's profile) instead of answering `401`.
+  With `verify_revocation` the profile of that check is reused, otherwise it is read once.
+- `HasAnikeenTokens::anikeenTokenClientId()`, `anikeenTokenClientName()` and
+  `anikeenTokenClientTrusted()` and `anikeenTokenIsPersonalAccess()` from the token's `aud` and new
+  `client` claim (`name`, `trusted`, `personal_access`); the guard also sets
+  the request attribute `oauth_client_name`.
+- `AnikeenId::actingAs()` takes further token claims as an optional fourth argument.
+- `EventType::APP_ACCESS_REVOKED` (`app_access.revoked`, opt-in): a user removed an app's access, or
+  Anikeen revoked the app or no longer trusts it.
+- Guzzle 8 is allowed (`guzzlehttp/guzzle: ^7.8|^8.0`), so the package installs in a new Laravel 13 app.
+
+
+### Changed
+
+- Anikeen ID enforces scopes on every call with a user's token (first only logged, then refused
+  with `403` `missing_scope`). Reads need `<area>:read` or `<area>`, changes `<area>`; `user` and
+  `*` pass all: `user:read` (user, Socialite, `vatRate()`, `balance()`), `user` (profile changes),
+  `billing:read` / `billing` (overview; `charge()`, `billingPortalUrl()`), `addresses:read` /
+  `addresses`, `invoices:read` (or `billing:read`), `transactions:read`, `orders:read` / `orders`
+  (also items and shipments), `payment-methods:read` / `payment-methods`, `subscriptions:read` /
+  `subscriptions` (also checkout sessions), `ssh-keys:read` / `ssh-keys`. The README lists the
+  scope of each method. Without `user:read`, `getAuthedUser()` returns only the user's `id`.
+
+### Fixed
+
+- The `anikeen` guard treats a token whose `sub` equals its `aud` (a client credentials token, as Passport issues them) as one without a user, instead of looking up a user by the client id.
 ## 3.5.0 (2026-11-08)
 
 The user's role for trusted apps; it needs an Anikeen ID release that sends it.

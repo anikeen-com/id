@@ -69,6 +69,13 @@ class AnikeenId
     private static string $userIdField = 'anikeen_id';
 
     /**
+     * Creates the local user of a valid access token whose user is unknown (provisionUsersUsing()).
+     *
+     * @var (callable(\stdClass, array<string, mixed>, string): (Authenticatable|null))|null
+     */
+    private static $userProvisioner = null;
+
+    /**
      * Guzzle is used to make http requests.
      */
     protected Client $client;
@@ -168,6 +175,29 @@ class AnikeenId
     }
 
     /**
+     * Let the `anikeen` guard create the local user when a valid bearer token belongs to a user
+     * the app does not know yet (just-in-time), e.g. a user a trusted app acts for. The callback
+     * gets the token's claims, the user's profile (`GET v1/user` with that token, as an array)
+     * and the raw token, and returns the new user or null (the request stays unauthenticated).
+     * Exceptions it throws are not caught. Not called for the token cookie or tokens without a
+     * user. null switches it off.
+     *
+     * @param  (callable(\stdClass, array<string, mixed>, string): (Authenticatable|null))|null  $provisioner
+     */
+    public static function provisionUsersUsing(?callable $provisioner): void
+    {
+        self::$userProvisioner = $provisioner;
+    }
+
+    /**
+     * @return (callable(\stdClass, array<string, mixed>, string): (Authenticatable|null))|null
+     */
+    public static function userProvisioner(): ?callable
+    {
+        return self::$userProvisioner;
+    }
+
+    /**
      * A copy that uses the app's own access token (client credentials) instead of a user's token.
      * The shared instance keeps its token, so app rights never leak into other requests.
      *
@@ -223,11 +253,13 @@ class AnikeenId
     /**
      * Set the current user for the application with the given scopes.
      */
-    public static function actingAs(Authenticatable|HasAnikeenTokens $user, array $scopes = [], string $guard = 'api'): Authenticatable
+    public static function actingAs(Authenticatable|HasAnikeenTokens $user, array $scopes = [], string $guard = 'api', array $claims = []): Authenticatable
     {
-        $user->withAnikeenAccessToken((object)[
-            'scopes' => $scopes
-        ]);
+        // $claims: further token claims, e.g. ['aud' => $clientId, 'client' => ['name' => 'Shop', 'trusted' => true]]
+        $user->withAnikeenAccessToken((object) array_merge(
+            array_map(fn ($value) => is_array($value) && !array_is_list($value) ? (object) $value : $value, $claims),
+            ['scopes' => $scopes]
+        ));
 
         if (isset($user->wasRecentlyCreated) && $user->wasRecentlyCreated) {
             $user->wasRecentlyCreated = false;

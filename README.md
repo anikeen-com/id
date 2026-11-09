@@ -122,14 +122,14 @@ access token from `anikeen_id_access_token`.
 
 ### Login and callback
 
-Ask for the scopes your app needs (see [Scope](src/Id/Enums/Scope.php)). To sell orders and
-subscriptions, a shop typically asks for:
+Ask for the scopes your app needs (see [Scope](src/Id/Enums/Scope.php) and
+[which call needs which](#scopes)). To sell orders and subscriptions, a shop typically asks for:
 
 ```php
 use Laravel\Socialite\Facades\Socialite;
 
 Route::get('auth/redirect', fn () => Socialite::driver('anikeen')
-    ->scopes(['user:read', 'addresses:read', 'orders', 'subscriptions'])
+    ->scopes(['user:read', 'addresses:read', 'payment-methods:read', 'orders', 'subscriptions'])
     ->redirect());
 
 Route::get('auth/callback', function () {
@@ -184,6 +184,32 @@ Scopes follow one schema: `resource` grants full access, `resource:read` read-on
 `resource:client` access to what the app or token created itself. All of them are constants on
 `Anikeen\Id\Enums\Scope`, e.g. `Scope::ORDERS_READ`.
 
+**Anikeen ID checks them.** Every call with the user's token needs the scope of its area: reads
+take `<area>:read` or `<area>`, changes `<area>`. `user` (full access to the account) and `*`
+pass all of the areas below; `user:read` only reads the user. The `:client` scopes are for the
+app's own token (client credentials) and open nothing with a user token. Without the scope the call
+fails with `403` `missing_scope` (`ApiException`, the response lists the scopes that would pass).
+Anikeen ID rolls this out in two steps: first requests without the scope are only logged, then
+refused, so ask for the scopes now.
+
+| Methods (user token) | Read with | Change with |
+|---|---|---|
+| `getUserData()`, `balance()`, `charges()`, `vatRate()`, `socialiteUsers()`, `profilePortalUrl()`, the Socialite user | `user:read` | |
+| `updateProfile()`, `uploadAvatar()`, `removeAvatar()` | | `user` |
+| `billingOverview()` | `billing:read` | |
+| `charge()`, `billingPortalUrl()` | | `billing` |
+| `addresses()`, `hasDefaultBillingAddress()` (also `user:read`) | `addresses:read` | `addresses` |
+| `invoices()`, `getInvoiceTemporaryUrl()` | `invoices:read` (or `billing:read`) | |
+| `transactions()` | `transactions:read` | |
+| `orders()`, `orderItems()`, `shipments()`, `checkout()`, `revoke()` | `orders:read` | `orders` |
+| `paymentMethods()`, `defaultPaymentMethod()`, `hasDefaultPaymentMethod()`, `createSetupIntent()`, `setDefaultPaymentMethod()` | `payment-methods:read` | `payment-methods` |
+| `subscriptions()`, `checkoutSessions()` | `subscriptions:read` | `subscriptions` |
+| `sshKeys()` | `ssh-keys:read` | `ssh-keys` |
+| `globalPreferences()`, `setGlobalPreference()`, `deleteGlobalPreference()` | `preferences:read` | `preferences` (`user` doesn't count) |
+
+Without `user:read` (or `user`), `getAuthedUser()` returns only the user's `id`: enough for the
+guard's revocation check, but no profile.
+
 The Anikeen Console accepts personal access tokens and OAuth tokens (no client credentials) with
 these scopes for its product and reseller APIs:
 
@@ -196,8 +222,24 @@ these scopes for its product and reseller APIs:
 | `reseller-orders` | `Scope::RESELLER_ORDERS` | order products for customers, charged right away |
 
 A full reseller scope includes reading. `user` and `*` do not open the reseller endpoints: the
-token has to carry the reseller scope itself. For the product APIs there is only `products:read`;
-changing products needs `user`.
+token has to carry the reseller scope itself.
+
+Each product family of the Console has its own pair of scopes: the full scope reads, changes and
+orders products of that family, `:read` only reads them.
+
+| Family | Full scope | Read-only scope |
+|--------|------------|-----------------|
+| Servers (with their floating IPs) | `console-servers` (`Scope::CONSOLE_SERVERS`) | `console-servers:read` |
+| Containers | `console-containers` (`Scope::CONSOLE_CONTAINERS`) | `console-containers:read` |
+| Domains | `console-domains` (`Scope::CONSOLE_DOMAINS`) | `console-domains:read` |
+| DNS zones | `console-zones` (`Scope::CONSOLE_ZONES`) | `console-zones:read` |
+| Web hosting | `console-hosting` (`Scope::CONSOLE_HOSTING`) | `console-hosting:read` |
+| Load balancers | `console-load-balancers` (`Scope::CONSOLE_LOAD_BALANCERS`) | `console-load-balancers:read` |
+| Object storage | `console-object-storage` (`Scope::CONSOLE_OBJECT_STORAGE`) | `console-object-storage:read` |
+
+A [trusted app](#trusted-apps) acting in the Console for its users asks for these scopes in the
+login (e.g. `console-containers`); for app tokens the Console accepts only them, not `user`.
+Personal access tokens may use them too, or `user` / `products:read` as before.
 
 Changing the user's [profile](#user-profiles) needs `Scope::USER` (`user`); `user:read` only reads.
 
@@ -1441,7 +1483,7 @@ The guard accepts `Authorization: Bearer <access token>` with an access token is
 public key and the time claims (`exp`, `nbf`, `iat`, 60 seconds leeway). The token's `sub` (the
 user's Anikeen ID) is looked up in the column `anikeen_id` of the user model: the provider's
 `column`, else `services.anikeen.user_id_column`, else `AnikeenId::useUserIdField()`. Tokens of
-unknown users, client credentials tokens (no `sub`), expired or forged tokens leave the request
+unknown users, client credentials tokens (their `sub` is the client id itself), expired or forged tokens leave the request
 unauthenticated, so `auth:api` answers `401 {"message": "Unauthenticated."}` to JSON requests.
 
 The user model uses `Anikeen\Id\HasAnikeenTokens`; the token's scopes are then available:
@@ -1461,6 +1503,45 @@ Route::middleware(['auth:api', CheckScopes::using('user')])->post(...);         
 Route::middleware(['auth:api', CheckForAnyScope::using('user', 'user:read')])->get(...);  // any scope
 ```
 
+The token also tells which app it was issued to. Anikeen ID adds a `client` claim with the app's
+name, whether Anikeen trusts it and whether it is a personal access token; tokens issued before that have none:
+
+```php
+$request->user()->anikeenTokenClientId();       // the OAuth client (the token's `aud`)
+$request->user()->anikeenTokenClientName();     // e.g. "Shop", or null
+$request->user()->anikeenTokenClientTrusted();  // true only for trusted apps
+$request->user()->anikeenTokenIsPersonalAccess(); // a personal access token, not an app's
+```
+
+#### Users that are not known yet
+
+By default a token of a user your app does not know leaves the request unauthenticated. To create
+the user instead (e.g. because a trusted app calls your API for one of its users, who never signed
+in to your app), register a callback, e.g. in `AppServiceProvider::boot()`. It gets the token's
+claims, the user's profile (`GET v1/user` read with that token; with `verify_revocation` the
+answer of that check is reused) and the raw token, and returns the new user or `null`. A token
+without `user:read` (or `user`) gives a profile with only `id`, so check the fields you need:
+
+```php
+use Anikeen\Id\AnikeenId;
+
+AnikeenId::provisionUsersUsing(function (stdClass $claims, array $profile, string $token) {
+    if (($claims->client->trusted ?? null) !== true || empty($profile['email_verified_at'])) {
+        return null; // 401 as before
+    }
+
+    return User::create([
+        'anikeen_id' => $claims->sub,
+        'name' => $profile['name'],
+        'email' => $profile['email'],
+    ]);
+});
+```
+
+Exceptions the callback throws are not caught (e.g. an `HttpException` with `409` for an e-mail
+address that belongs to another account). It is not called for the token cookie or for client
+credentials tokens.
+
 Options in `config/services.php` (`anikeen`):
 
 | Key | Default | |
@@ -1471,7 +1552,9 @@ Options in `config/services.php` (`anikeen`):
 | `verify_revocation` | `false` | also ask Anikeen ID (`GET v1/user`) whether the token is still valid, so revoked tokens stop working before they expire; fails closed when Anikeen ID is unreachable |
 | `revocation_cache_ttl` | `300` | seconds that answer is cached per token |
 
-The key is read once per process. In tests `AnikeenId::actingAs($user, ['user'])` signs in without a token.
+The key is read once per process. In tests `AnikeenId::actingAs($user, ['user'])` signs in without a
+token; further claims go in the fourth argument, e.g. `AnikeenId::actingAs($user,
+['console-containers'], 'api', ['aud' => $clientId, 'client' => ['name' => 'Shop', 'trusted' => true]])`.
 
 ## General
 
