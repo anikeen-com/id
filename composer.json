@@ -17,7 +17,7 @@
     "ext-json": "*",
     "illuminate/support": "^12.69|^13.0",
     "illuminate/console": "^12.69|^13.0",
-    "guzzlehttp/guzzle": "^7.8",
+    "guzzlehttp/guzzle": "^7.8|^8.0",
     "socialiteproviders/manager": "^4.6",
     "firebase/php-jwt": "^7.0"
   },

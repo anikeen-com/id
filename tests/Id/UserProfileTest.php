@@ -148,7 +148,8 @@ class UserProfileTest extends TestCase
         $this->assertStringStartsWith('multipart/form-data; boundary=', $request->getHeaderLine('Content-Type'));
         $this->assertStringContainsString('name="avatar"; filename="' . basename($path) . '"', $body);
         $this->assertStringContainsString('picture-bytes', $body);
-        $this->assertStringContainsString("name=\"crop[x]\"\r\nContent-Length: 2\r\n\r\n10", $body);
+        // Guzzle 7 adds a Content-Length per part, Guzzle 8 does not
+        $this->assertMatchesRegularExpression('/name="crop\\[x\\]"\r\n(Content-Length: 2\r\n)?\r\n10\r\n/', $body);
         $this->assertStringContainsString('name="crop[y]"', $body);
         $this->assertStringContainsString('name="crop[size]"', $body);
         $this->assertSame(10, $user->version());
