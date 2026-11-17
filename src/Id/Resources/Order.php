@@ -8,6 +8,8 @@ use Throwable;
 
 /**
  * @property string $id
+ * @property string $order_number readable and consecutive per year, e.g. B2026-0001: show this one
+ *                                to customers (on the order page, in mails, on the return page)
  * @property null|string $confirmation_url where the user confirms it (third-party apps, or `confirm`)
  * @property null|string $oauth_client_id the app that bills the order: the app that created it, or for a monthly
  *                                        (collective) order the app whose subscriptions it bills; collective orders

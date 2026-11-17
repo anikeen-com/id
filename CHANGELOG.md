@@ -1,5 +1,48 @@
 # Changelog
 
+## 3.7.0-beta.1 (unreleased)
+
+The app's own product catalog with stock; needs an Anikeen ID release with the inventory API.
+
+### Added
+
+- `AnikeenId::inventory()` (`AppInventory`, app token, scope `Scope::INVENTORY_CLIENT`):
+  `products()`, `product()`, `productBySku()`, `createProduct()`, `upsertProducts()` (batches of
+  100 by SKU), `updateProduct()`, `deleteProduct()`, `stockMovements()`, `bookStock()`,
+  `receive()` and `count()`.
+- Order items take `product_id` of an app product: the item takes what it leaves out from the
+  product and its tracked stock is reserved, taken on payment and released on cancellation.
+- `ApiException::isOutOfStock()` for `409` `out_of_stock` (details in `body()`).
+- Orders have a readable `order_number`, consecutive per year (`B2026-0001`).
+  `$user->orders(['own' => true])` lists only the orders the calling app created,
+  `['order_number' => …]` finds one by its number; `AppOrders::findByNumber()` with the app token.
+  `orders()` keeps one list per parameter set (it returned the first list for any parameters).
+- `AppInventory::priceHistory()`: a product's price history kept by Anikeen ID (sources admin, api,
+  jpc = the price check of fixed book prices); product.updated carries only the current price.
+- `Scope::INVENTORY_STAFF` (`inventory-staff`): Anikeen's staff in the inventory app (user token,
+  administrators only).
+- Warehouses: `AppInventory::warehouses()`, `createWarehouse()`, `updateWarehouse()`,
+  `deleteWarehouse()`, `transferStock()`; `bookStock()`, `receive()` and `count()` take an optional
+  `$warehouseId`. Products carry `stocks` (per warehouse) and `price_bound`; movements carry
+  `warehouse_id`.
+- Sales channels: an app selling another app's catalog reads it with the same `AppInventory`
+  methods (its assortment, its prices, its warehouses' stock) and orders from it.
+- Purchasing: `AppInventory::suppliers()`, `createSupplier()`, `updateSupplier()`, `deleteSupplier()`,
+  `purchaseOrders()`, `purchaseOrder()`, `createPurchaseOrder()`, `orderPurchaseOrder()`,
+  `receivePurchaseOrder()` (books stock receipts) and `cancelPurchaseOrder()`.
+- Stock movements carry `order_item_id` (returns booked per order item).
+- Webhook events `EventType::PRODUCT_UPDATED` (`product.updated`) and `PRODUCT_STOCK_CHANGED`
+  (`product.stock_changed`) for the app's catalog; opt-in. `PRODUCT_STOCK_LOW` (`product.stock_low`) when a
+  product falls to its low stock threshold.
+- Products take `storage_location` and `weight_grams`; order items in webhooks and app orders carry
+  `product_id`.
+- `Scope::INVENTORY_CLIENT` (`inventory:client`).
+- Product safety information (EU General Product Safety Regulation): products take a
+  `manufacturer` and `responsible_person` (by ID or inline), `safety_warnings`,
+  `safety_information` and `min_age`, and return them as `safety` with what is still `missing`.
+  `AppInventory::operators()`, `operator()`, `createOperator()`, `updateOperator()`,
+  `deleteOperator()` and `productsWithIncompleteSafety()` for the app's economic operators.
+
 ## 3.6.0 (2026-11-09)
 
 Scopes and guard support for apps acting in the Anikeen Console for a user; the `client` claim and
