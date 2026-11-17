@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Model;
  * scope orders:client) - of one user ($user->appOrders()) or of all users
  * (app(AnikeenId::class)->appOrders()). Nothing is requested until a method is called.
  *
- * Each order is an object with id, user_id, oauth_client_id (the app that bills it: collective
+ * Each order is an object with id, order_number (B2026-0001), user_id, oauth_client_id (the app that bills it: collective
  * orders are kept per app, even for the same group; null on legacy orders that billed several
  * apps), group, metadata, status (processing|pending|completed|cancelled), is_collective,
  * net_total, vat_total, gross_total, currency_iso, created_at, paid_at, payment_attempts,
@@ -21,7 +21,8 @@ use Illuminate\Database\Eloquent\Model;
  *
  * - items: the order's lines of the app's subscriptions (all lines, except on legacy orders that
  *   also billed other apps), each {id, name, description, type, image_url, units, unit,
- *   price, vat_rate, subscription_id, meter, monthly_cap, discount, period_start, period_end,
+ *   price, vat_rate, product_id (the app's catalog product), subscription_id, meter, monthly_cap,
+ *   discount, period_start, period_end,
  *   net_amount, vat_amount, gross_amount}. period_end is exclusive (the start of the next
  *   period); both are null for lines without a period. discount ({label, percent_off,
  *   amount_off}) marks the negative line of a subscription's discount, else null. The net amount
@@ -39,7 +40,7 @@ class AppOrders
     /**
      * All matching orders, oldest first.
      *
-     * @param array{status?: string, group?: string} $filters
+     * @param array{status?: string, group?: string, order_number?: string} $filters
      * @return list<object>
      *
      * @throws ApiException
@@ -92,6 +93,16 @@ class AppOrders
         }
 
         return !$this->billable || $order->user_id === $this->userId() ? $order : null;
+    }
+
+    /**
+     * The order with this readable number (B2026-0001) – of the user, if the resource is for one.
+     *
+     * @throws ApiException
+     */
+    public function findByNumber(string $orderNumber): ?object
+    {
+        return $this->all(['order_number' => $orderNumber])[0] ?? null;
     }
 
     /**

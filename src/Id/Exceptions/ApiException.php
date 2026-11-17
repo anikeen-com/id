@@ -95,6 +95,16 @@ class ApiException extends ResourceException
     }
 
     /**
+     * An order item asked for more units of an app product than are in stock (409
+     * "out_of_stock"; see AnikeenId::inventory()). Nothing was created. body() has product_id,
+     * sku, requested and available.
+     */
+    public function isOutOfStock(): bool
+    {
+        return $this->status === 409 && $this->error === 'out_of_stock';
+    }
+
+    /**
      * The ID service could not be reached (network error, timeout) or failed (5xx): retry later.
      */
     public function isTemporary(): bool

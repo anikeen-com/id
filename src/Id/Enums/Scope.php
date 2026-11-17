@@ -39,6 +39,13 @@ class Scope
     const PREFERENCES_READ = 'preferences:read';
     const PREFERENCES_CLIENT = 'preferences:client';
 
+    // An app's own product catalog and stock (inventory), app token only: products, stock
+    // movements and inventory counts of the app's products. Never opens anything of a user.
+    const INVENTORY_CLIENT = 'inventory:client';
+    // Anikeen's staff working the warehouse in the inventory app (identity-app), with their own
+    // user token: every catalog's stock, stock takes, goods receipt and shipping. Admins only.
+    const INVENTORY_STAFF = 'inventory-staff';
+
     const SSH_KEYS = 'ssh-keys';
     const SSH_KEYS_READ = 'ssh-keys:read';
 

@@ -98,6 +98,27 @@ final class EventType
     public const USER_UPDATED = 'user.updated';
 
     /**
+     * A product of the app's catalog changed in Anikeen ID (e.g. edited by staff in the admin):
+     * `data.object` is the product as AppInventory returns it, `data.changed` the changed fields
+     * (`created`, `deleted_at` for new, deleted and restored products). Stock has its own event.
+     * Opt-in (not through `*`).
+     */
+    public const PRODUCT_UPDATED = 'product.updated';
+
+    /**
+     * A stock movement was booked for a product of the app's catalog (receipt, return, damage,
+     * count, reservation, release, sale): `data.object` is the product with its new stock,
+     * `data.movement` the movement. Opt-in (not through `*`).
+     */
+    public const PRODUCT_STOCK_CHANGED = 'product.stock_changed';
+
+    /**
+     * A product of the app's catalog fell to its `low_stock_threshold` (available stock): once per
+     * drop, again only after it was restocked above it. `data.object` is the product. Opt-in.
+     */
+    public const PRODUCT_STOCK_LOW = 'product.stock_low';
+
+    /**
      * A user connected to your app deleted their account (or it was deleted): delete or anonymise
      * it and treat it as final. `data.object` is `{object: "user", id, deleted: true, deleted_at}`.
      * Sent once; no other event about the user follows. A later user.updated for the same ID means

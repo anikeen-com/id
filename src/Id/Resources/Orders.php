@@ -53,6 +53,7 @@ class Orders extends BaseCollection
      *     return_url?: null|string,
      *     metadata?: null|array,
      *     items: array<array{
+     *         product_id?:  null|string,
      *         type:         string,
      *         name:         string,
      *         description?: null|string,
@@ -70,6 +71,9 @@ class Orders extends BaseCollection
      *   - return_url:       Where the user returns after confirming (same origin as one of the app's redirect URIs; optional)
      *   - metadata:         The app's own data (max. 50 keys), returned as is in the API and webhooks (optional)
      *   - items:            Array of order items:
+     *       - product_id:  A product of the app's catalog (AnikeenId::inventory()): the item takes what it
+     *                      leaves out (name, type, unit, price, picture) from it, and its tracked stock is
+     *                      reserved; 409 "out_of_stock" (ApiException::isOutOfStock(), details in body()) when too few are left
      *       - type:        digital, physical or physical-reduced (VAT category)
      *       - price/gross_price: net or gross unit price, one of both
      *       - unit:        hour, day, week, month, year, onetime or piece

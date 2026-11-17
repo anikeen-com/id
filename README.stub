@@ -15,14 +15,15 @@ subscriptions and physical goods, with invoices, VAT and payment handled by Anik
 2. [Configuration](#configuration)
 3. [Sign in with Anikeen ID](#sign-in-with-anikeen-id)
 4. [Payments](#payments)
-5. [Trusted apps](#trusted-apps)
-6. [User profiles](#user-profiles)
-7. [Preferences](#preferences)
-8. [API authentication](#api-authentication)
-9. [General](#general)
-10. [Examples](#examples)
-11. [Documentation](#documentation)
-12. [Development](#development)
+5. [Inventory](#inventory)
+6. [Trusted apps](#trusted-apps)
+7. [User profiles](#user-profiles)
+8. [Preferences](#preferences)
+9. [API authentication](#api-authentication)
+10. [General](#general)
+11. [Examples](#examples)
+12. [Documentation](#documentation)
+13. [Development](#development)
 
 ## Installation
 
@@ -344,6 +345,21 @@ string (`completed`, `pending` or `cancelled`) is only a hint for the message yo
 
 `checkout()` on such a draft throws `ConfirmationRequiredException`; its `confirmationUrl`
 points to the same page. Trusted apps keep checking out directly.
+
+### Order numbers
+
+Every order has a readable `order_number`, consecutive per year (`B2026-0001`). Show it to your
+customers; Anikeen ID uses it on the confirmation page, in mails and on invoices. You don't need
+your own order table for it: list the orders your app created for the signed-in user, or find one
+by its number:
+
+```php
+$orders = $user->orders(['own' => true])->paginate();                  // newest first
+$order = $user->orders(['own' => true, 'order_number' => 'B2026-0001'])->paginate()->data[0] ?? null;
+
+// with the app token (trusted apps): one user's or all users' orders that bill your app
+$order = app(AnikeenId::class)->appOrders()->findByNumber('B2026-0001');
+```
 
 ### Prices and VAT
 
@@ -759,6 +775,147 @@ $this->app->instance(AnikeenId::class, (new AnikeenId())->setHttpClient(new \Guz
     'base_uri' => 'https://id.test/api/',
 ])));
 ```
+
+## Inventory
+
+Any app can keep its own product catalog with stock in Anikeen ID (scope `Scope::INVENTORY_CLIENT`,
+`inventory:client`, with the app's own token; an app only ever sees its own products). Orders name
+the products with `product_id`; Anikeen ID then completes the item from the product and keeps the
+stock right along the order:
+
+| Order | Stock |
+|---|---|
+| created (draft) | the units are **reserved** (`stock_reserved`), or `409` `out_of_stock` and nothing is created |
+| paid (`order.completed`) | the units are **taken** from `stock_on_hand` |
+| cancelled, expired or deleted before payment | the reservation is **released** |
+| revoked or refunded after payment | nothing changes: book a `return` when the goods are back |
+
+### Products
+
+```php
+use Anikeen\Id\AnikeenId;
+
+$inventory = app(AnikeenId::class)->inventory();
+
+$product = $inventory->createProduct([
+    'sku' => '9783551804808',             // your article number (e.g. the ISBN), unique per app
+    'name' => 'Mitsuboshi Colors – Band 1',
+    'type' => 'physical-reduced',         // order item type: digital, physical or physical-reduced
+    'gross_price' => '7.50',              // or 'price' (net)
+    'image_url' => 'https://shop.test/covers/9783551804808.webp',
+    'low_stock_threshold' => 2,
+    'metadata' => ['series' => 'Mitsuboshi Colors', 'volume' => 1],
+    'stock_on_hand' => 5,                 // initial stock, booked as an inventory count
+]);
+
+$product->stock_available;                // stock_on_hand - stock_reserved
+
+// sync a whole catalog by SKU (batches of 100, deleted products are restored)
+$inventory->upsertProducts($rows);
+
+$inventory->products(['low_stock' => true]);      // what to reorder
+$inventory->products(['updated_since' => $lastSync]);
+$inventory->productBySku('9783551804808');
+$inventory->updateProduct($product->id, ['available' => false]);
+$inventory->deleteProduct($product->id);
+```
+
+New products track their stock (`track_inventory`); without it they are a plain catalog entry
+and orders don't reserve anything. Products of apps never show in the public `v1/products`.
+
+### Stock
+
+The stock only changes by movements, each one in the product's journal:
+
+```php
+$inventory->receive($product->id, 10, reference: 'PO-2026-0001');           // goods received
+$inventory->bookStock($product->id, 'return', 1, note: 'Order AK-1234');      // back from a customer
+$inventory->bookStock($product->id, 'damage', 1, note: 'Corner bent');        // taken out
+$inventory->bookStock($product->id, 'adjustment', -2);                        // either sign
+$inventory->count($product->id, 7);                                           // inventory count
+
+$inventory->stockMovements($product->id);   // newest first, also reservation, release and sale
+```
+
+### Product safety (GPSR)
+
+Online offers in the EU have to show who made a product and how to use it safely (General Product
+Safety Regulation 2023/988, Art. 19). Keep it with the product; Anikeen ID reports what is
+still `missing`:
+
+```php
+$product = $inventory->createProduct([
+    'sku' => '4582733428741',
+    'name' => 'Figure – Takina (Yukata)',
+    'type' => 'physical',
+    'gross_price' => '29.99',
+    // operators are reused across products: by ID, or inline (created or updated by name)
+    'manufacturer' => ['name' => 'Example Figures Co., Ltd.', 'address' => '1-2-3 Example', 'postal_code' => '100-0001', 'city' => 'Tokyo', 'country_iso' => 'JP', 'url' => 'https://figures.example/contact'],
+    // required when the manufacturer is outside the EU
+    'responsible_person' => ['name' => 'Example Import GmbH', 'address' => 'Musterweg 1', 'postal_code' => '10115', 'city' => 'Berlin', 'country_iso' => 'DE', 'email' => 'safety@import.example'],
+    'safety_warnings' => ['Achtung! Kein Spielzeug. Nicht für Kinder unter 15 Jahren geeignet.'],
+    'min_age' => 15,
+]);
+
+$product->safety->missing;                     // [] when complete
+$inventory->productsWithIncompleteSafety();    // what to fix before selling
+$inventory->operators();                       // manufacturers and responsible persons
+```
+
+Show `safety` on the product page before the customer buys: the manufacturer (name, postal and
+electronic address), the responsible person in the EU, and the warnings.
+
+### Warehouses
+
+```php
+$fair = $inventory->createWarehouse(['name' => 'Messelager', 'code' => 'ML']);
+$inventory->receive($product->id, 10, 'LS-778', warehouseId: $fair->id); // without: the default warehouse
+$inventory->transferStock($product->id, $fair->id, $defaultWarehouseId, 4);
+
+$product->stocks; // per warehouse: warehouse_id, stock_on_hand, stock_reserved, stock_available, storage_location
+```
+
+A sales channel (an app selling another app's catalog) reads that catalog with `products()` at its
+own prices and orders from it with `items.*.product_id`; everything else answers 403
+`channel_read_only`.
+
+### Purchasing
+
+```php
+$supplier = $inventory->createSupplier(['name' => 'Carlsen Verlag', 'country_iso' => 'DE', 'lead_time_days' => 3]);
+$order = $inventory->createPurchaseOrder([
+    'supplier_id' => $supplier->id,
+    'items' => [['product_id' => $product->id, 'quantity' => 10]], // unit_price: the supplier's, else the average cost
+]);
+$inventory->orderPurchaseOrder($order->id);
+
+// a delivery: received units per item, books stock receipts with E2026-0001 as reference
+$inventory->receivePurchaseOrder($order->id, [$order->items[0]->id => 10], 'LS-778');
+```
+
+### Selling catalog products
+
+```php
+use Anikeen\Id\Exceptions\ApiException;
+
+try {
+    $order = $user->orders()->create([
+        'billing_address_id' => $user->getUserData()->billing_address_id,
+        'items' => [
+            ['product_id' => $product->id, 'units' => 2],      // name, type, unit, price and picture from the product
+            ['product_id' => $other->id, 'units' => 1, 'gross_price' => '5.00'], // given values win
+        ],
+    ]);
+} catch (ApiException $e) {
+    if ($e->isOutOfStock()) {
+        $e->body()->available; // also product_id, sku, requested
+    }
+    throw $e;
+}
+```
+
+Products of other apps and unavailable products are refused with `422` on `items.<n>.product_id`.
+Tracked products are sold in whole units.
 
 ## Trusted apps
 
