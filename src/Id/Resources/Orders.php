@@ -50,6 +50,8 @@ class Orders extends BaseCollection
      *     },
      *     group?: null|string,
      *     confirm?: bool,
+     *     calculate_shipping?: bool,
+     *     shipping_method_id?: null|string,
      *     return_url?: null|string,
      *     metadata?: null|array,
      *     items: array<array{
@@ -68,6 +70,8 @@ class Orders extends BaseCollection
      *   - shipping_address: Shipping address for physical items (first name, last name, address, postal code, city, ISO 3166-1 alpha-2 country code)
      *   - group:            The app's group, e.g. a team (optional)
      *   - confirm:          Trusted apps: leave confirming and paying to the user (confirmation_url, expires after 24 hours; optional)
+     *   - calculate_shipping: Anikeen ID adds the shipping from the app's shipping zones and the shipping address; send no shipping item then (optional)
+     *   - shipping_method_id: The method of the matching zone the customer picked (optional, default: the zone's first; changeable on the confirmation page)
      *   - return_url:       Where the user returns after confirming (same origin as one of the app's redirect URIs; optional)
      *   - metadata:         The app's own data (max. 50 keys), returned as is in the API and webhooks (optional)
      *   - items:            Array of order items:

@@ -4,6 +4,12 @@
 
 ### Added
 
+- `AnikeenId::shipping()` (`AppShipping`, app token, scope `Scope::INVENTORY_CLIENT`): the app's
+  shipping zones (`zones()`, `createZone()`, `updateZone()`, `deleteZone()`) and what shipping
+  costs for an address (`rates()`). Orders take `calculate_shipping` (Anikeen ID prices the
+  shipping by the zones and the shipping address, the customer picks the method on the
+  confirmation page; VAT follows the goods) and `shipping_method_id`. Needs an Anikeen ID release
+  with shipping zones.
 - `price_bound` on `createProduct()`, `upsertProducts()` and `updateProduct()`, and in every
   product (Buchpreisbindung). A new book (ISBN-13 as `sku`, `physical-reduced`) is price-bound
   unless the app sends `price_bound: false`; a change sends `product.updated`. Needs an Anikeen ID
