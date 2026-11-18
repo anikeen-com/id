@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 3.8.0 (2026-11-19)
+
+Shipping zones per app and price-bound products; needs an Anikeen ID release with both.
 
 ### Added
 
