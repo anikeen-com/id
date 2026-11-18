@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- `price_bound` on `createProduct()`, `upsertProducts()` and `updateProduct()`, and in every
+  product (Buchpreisbindung). A new book (ISBN-13 as `sku`, `physical-reduced`) is price-bound
+  unless the app sends `price_bound: false`; a change sends `product.updated`. Needs an Anikeen ID
+  release with this field.
+
 ## 3.7.0 (2026-11-18)
 
 The app's own product catalog with stock; needs an Anikeen ID release with the inventory API.

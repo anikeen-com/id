@@ -116,6 +116,7 @@ class AppInventory
      *     unit?: string,
      *     image_url?: null|string,
      *     available?: bool,
+     *     price_bound?: bool,
      *     track_inventory?: bool,
      *     low_stock_threshold?: null|int,
      *     storage_location?: null|string,
@@ -138,6 +139,9 @@ class AppInventory
      *   - unit:                piece (default) or onetime
      *   - image_url:           Picture for orders and invoices (optional)
      *   - available:           Whether it can be ordered (default true)
+     *   - price_bound:         Fixed book price (Buchpreisbindung): the same in every sales channel and
+     *                          taken over by the price check; default true for a book (ISBN-13 as
+     *                          sku, physical-reduced), else false
      *   - track_inventory:     Whether orders reserve and take its stock (default true)
      *   - low_stock_threshold: low_stock is true at or below this available stock (optional)
      *   - storage_location:    Where it lies in the warehouse, e.g. "R3-F2" (max. 100, optional)
