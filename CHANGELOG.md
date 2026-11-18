@@ -1,6 +1,6 @@
 # Changelog
 
-## 3.7.0-beta.1 (unreleased)
+## 3.7.0 (2026-11-18)
 
 The app's own product catalog with stock; needs an Anikeen ID release with the inventory API.
 
