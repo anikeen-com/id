@@ -3,6 +3,7 @@
 namespace Anikeen\Id;
 
 use Anikeen\Id\Concerns\ManagesInventory;
+use Anikeen\Id\Concerns\ManagesShipping;
 use Anikeen\Id\Concerns\ManagesPreferences;
 use Anikeen\Id\Concerns\ManagesPricing;
 use Anikeen\Id\Concerns\ManagesProducts;
@@ -29,6 +30,7 @@ class AnikeenId
     use ManagesPreferences;
     use ManagesPricing;
     use ManagesProducts;
+    use ManagesShipping;
     use ManagesShippingLabels;
     use ManagesUserBilling;
     use ManagesSocialiteUsers;
