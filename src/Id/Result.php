@@ -70,8 +70,12 @@ class Result
 
         if ($json !== null) {
             // Pagination info
-            $this->links = $json->links ?? null;
-            $this->meta  = $json->meta  ?? null;
+            if (is_object($json) && isset($json->links) && is_array($json->links)) {
+                [$this->links, $this->meta] = self::plainPaginator($json);
+            } else {
+                $this->links = $json->links ?? null;
+                $this->meta  = $json->meta  ?? null;
+            }
 
             // Determine data shape
             if (isset($json->data)) {
@@ -111,6 +115,33 @@ class Result
                 $this->paginator = Paginator::from($this);
             }
         }
+    }
+
+    /**
+     * Laravel's plain paginator (an endpoint that returns `->paginate()` without an API resource)
+     * sends `links` as the list of page links and its page data at the root. Read as the
+     * `{first, last, prev, next}` links and the `meta` of a resource collection, which is what the
+     * Paginator follows.
+     *
+     * @return array{0: stdClass, 1: stdClass}
+     */
+    private static function plainPaginator(stdClass $json): array
+    {
+        $links = (object) [
+            'first' => $json->first_page_url ?? null,
+            'last' => $json->last_page_url ?? null,
+            'prev' => $json->prev_page_url ?? null,
+            'next' => $json->next_page_url ?? null,
+        ];
+
+        $meta = new stdClass();
+        foreach (['current_page', 'from', 'last_page', 'path', 'per_page', 'to', 'total'] as $key) {
+            if (property_exists($json, $key)) {
+                $meta->{$key} = $json->{$key};
+            }
+        }
+
+        return [$links, $meta];
     }
 
     /**

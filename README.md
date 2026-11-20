@@ -1384,6 +1384,37 @@ $result->data->invitation_sent;        // only for an account created by this ca
 `findUserByEmail()` changes nothing. It throws `ApiException` when the request fails for any reason
 other than an unknown address.
 
+### Shipping labels (trusted apps)
+
+Deutsche Post Internetmarke stamps, bought with the app's token and billed to a user. An app only
+sees the labels it issued itself.
+
+```php
+$anikeenId = app(AnikeenId::class);
+
+$result = $anikeenId->issueShippingLabel([
+    'box' => ['common_name' => 'C6'],           // or barcode, id, size
+    'weight' => 12,                             // grams
+    'address' => ['first_name' => 'Erika', 'last_name' => 'Mustermann', 'street' => 'Musterweg',
+        'house_no' => '1', 'city' => 'Köln', 'zip' => '50667', 'country' => 'DE', 'email' => 'erika@example.com'],
+    'billed_user_id' => $creator->anikeen_id,   // who pays the postage
+    'reference' => $envelope->id,               // your own ID for it: a retry gets the same label
+    // 'test' => true,                          // a dry run: nothing is bought, a placeholder PDF
+]);
+$result->data->tracking_number;                 // the voucher ID printed on the stamp
+
+$pdf = $anikeenId->shippingLabelPdf($result->data->id);
+$anikeenId->voidShippingLabel($result->data->id); // not posted after all: the postage is refunded
+
+$anikeenId->shippingLabels(['reference' => $envelope->id]); // the labels issued under it
+```
+
+**Retries.** A purchase whose answer never arrives (a timeout) may still have bought the stamp. Send
+a `reference` and repeat the issue: as long as the label is live, Anikeen ID answers `200` with
+the label it already bought, without buying another. A different purchase under the same
+reference answers `409` `reference_conflict` (with the live label's `label_id`), and `409`
+`label_busy` while another issue with it is still running. Voiding a label frees its reference.
+
 
 ## User profiles
 
@@ -1867,6 +1898,7 @@ public function shippingLabels(array $parameters = []): Result
 public function shippingLabel(string $id): Result
 public function shippingLabelPdf(string $id): ?string
 public function issueShippingLabel(array $attributes): Result
+public function voidShippingLabel(string $id): Result
 public function shipShippingLabel(array $hex): Result
 public function shippingPriceList(): Result
 ```
