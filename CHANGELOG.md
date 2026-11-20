@@ -1,5 +1,34 @@
 # Changelog
 
+## 3.9.0-beta.1 (unreleased)
+
+Shipping labels: void a label, retry a purchase safely, read the label list. `voidShippingLabel()`
+and `reference` need an Anikeen ID release with anikeen-com/identity#164.
+
+### Added
+
+- `voidShippingLabel()` (`POST shipping-labels/{id}/void`): a label that will not be posted. An
+  Internetmarke stamp is refunded through Deutsche Post's retoure, a dry run label only marked.
+  `409` `label_cancelled`, `label_shipped`, `label_not_refundable`, `label_busy`; `502`
+  `refund_failed`, nothing changed.
+- `reference` on `issueShippingLabel()`: the app's own ID for the label, e.g. its envelope's. A retry
+  with it gets the live label already issued (`200`) instead of a second stamp; a different
+  purchase under it answers `409` `reference_conflict` with `label_id`, and `409` `label_busy`
+  while one with it is still running. Voiding the label frees the reference.
+- `shippingLabels()` takes `reference` (the labels issued under it) and `page`.
+- README: shipping labels.
+
+### Changed
+
+- `issueShippingLabel()` documents `test` as Anikeen ID treats it now: a dry run, nothing bought or
+  billed, `provider: test` with a placeholder PDF.
+
+### Fixed
+
+- `Result` reads Laravel's plain paginator (`links` as a list, the page data at the root), which
+  `shippingLabels()` gets: it threw a `TypeError` (#35). `links` and `meta` come out in the shape of
+  a resource collection.
+
 ## 3.8.0 (2026-11-19)
 
 Shipping zones per app and price-bound products; needs an Anikeen ID release with both.
