@@ -12,8 +12,10 @@ use Anikeen\Id\Support\AppRequest;
  * Each product is an object with id, sku (the app's article number, unique per app), name,
  * description, type (digital|physical|physical-reduced, the order item type), unit
  * (piece|onetime), price (net), gross_price (null when priced net), image_url, available,
- * track_inventory, stock_on_hand (physically in stock), stock_reserved (held by open orders),
- * stock_available (on hand minus reserved; null without track_inventory), low_stock_threshold,
+ * track_inventory, backorderable (also sold without stock), stock_on_hand (physically in stock;
+ * negative while backorders wait for the supplier), stock_reserved (held by open orders),
+ * stock_available (on hand minus reserved, at least 0; null without track_inventory),
+ * stock_backordered (units sold beyond the stock, waiting for the supplier), low_stock_threshold,
  * low_stock, storage_location (shelf in the default warehouse), stocks (per warehouse: warehouse_id,
  * stock_on_hand, stock_reserved, stock_available, storage_location), price_bound (fixed book
  * price: the same in every sales channel), weight_grams, metadata (the app's own data), safety,
@@ -118,6 +120,7 @@ class AppInventory
      *     available?: bool,
      *     price_bound?: bool,
      *     track_inventory?: bool,
+     *     backorderable?: bool,
      *     low_stock_threshold?: null|int,
      *     storage_location?: null|string,
      *     weight_grams?: null|int,
@@ -143,6 +146,8 @@ class AppInventory
      *                          taken over by the price check; default true for a book (ISBN-13 as
      *                          sku, physical-reduced), else false
      *   - track_inventory:     Whether orders reserve and take its stock (default true)
+     *   - backorderable:       Also sold without stock: orders reserve the missing units anyway and
+     *                          the purchase orders get them from the supplier (default false)
      *   - low_stock_threshold: low_stock is true at or below this available stock (optional)
      *   - storage_location:    Where it lies in the warehouse, e.g. "R3-F2" (max. 100, optional)
      *   - weight_grams:        Its weight in grams, e.g. for shipping (optional)
