@@ -17,6 +17,10 @@ and `reference` need an Anikeen ID release with anikeen-com/identity#164.
   while one with it is still running. Voiding the label frees the reference.
 - `shippingLabels()` takes `reference` (the labels issued under it) and `page`.
 - README: shipping labels.
+- Products: `backorderable` (also sold without stock: orders reserve the missing units anyway, the
+  purchase orders get them from the supplier) and `stock_backordered` (units sold beyond the
+  stock). `stock_on_hand` can be negative while backorders wait. Needs an Anikeen ID release with
+  backorders.
 
 ### Changed
 
