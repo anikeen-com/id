@@ -1,9 +1,10 @@
 # Changelog
 
-## 3.9.0-beta.1 (unreleased)
+## 3.9.0 (2026-11-21)
 
-Shipping labels: void a label, retry a purchase safely, read the label list. `voidShippingLabel()`
-and `reference` need an Anikeen ID release with anikeen-com/identity#164.
+Shipping labels: void a label, retry a purchase safely, read the label list; products can be
+backorderable. `voidShippingLabel()` and `reference` need anikeen-com/identity#164, backorders
+anikeen-com/identity#172 (both released).
 
 ### Added
 
