@@ -34,6 +34,24 @@ class AppShipping
     }
 
     /**
+     * The zone with its methods, or null if the app has none with this ID.
+     *
+     * @throws ApiException
+     */
+    public function zone(string $id): ?object
+    {
+        try {
+            return AppRequest::send('GET', sprintf('v1/client/shipping-zones/%s', $id))->data;
+        } catch (ApiException $e) {
+            if ($e->isNotFound()) {
+                return null;
+            }
+
+            throw $e;
+        }
+    }
+
+    /**
      * Creates a shipping zone with its methods.
      *
      * @param array{

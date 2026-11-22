@@ -1,5 +1,23 @@
 # Changelog
 
+## Unreleased
+
+Small additions for what Anikeen ID already offers; no new Anikeen ID release needed.
+
+### Added
+
+- `AppShipping::zone()` (`GET client/shipping-zones/{id}`), `AppInventory::warehouse()`
+  (`GET client/warehouses/{id}`) and `AppInventory::supplier()` (`GET client/suppliers/{id}`): one
+  zone, warehouse or supplier, or `null` when the app has none with this ID.
+- Orders document `free_shipping` (the app grants the shipping of an order with
+  `calculate_shipping`: the method stays, at 0 €) and `ship_after` (the warehouse holds the goods
+  back until then, so a customer's orders leave in one parcel). Anikeen ID accepts both already.
+- Products and their `stocks` document `stock_blocked`: free units in blocked storage bins, in stock
+  but not for sale; `stock_available` is on hand minus reserved and blocked.
+- README: collected shipping, `stock_blocked`, and a generated reference of the resources
+  (`AppInventory`, `AppShipping`, `AppOrders`, `AppSubscriptions`, `AppCheckoutSessions`,
+  `AppCharge` …), which `composer docs` now reflects next to the traits.
+
 ## 3.9.0 (2026-11-21)
 
 Shipping labels: void a label, retry a purchase safely, read the label list; products can be
@@ -130,6 +148,7 @@ Scopes and guard support for apps acting in the Anikeen Console for a user; the 
 ### Fixed
 
 - The `anikeen` guard treats a token whose `sub` equals its `aud` (a client credentials token, as Passport issues them) as one without a user, instead of looking up a user by the client id.
+
 ## 3.5.0 (2026-11-08)
 
 The user's role for trusted apps; it needs an Anikeen ID release that sends it.
