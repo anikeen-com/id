@@ -83,6 +83,9 @@ class Orders extends BaseCollection
      *       - product_id:  A product of the app's catalog (AnikeenId::inventory()): the item takes what it
      *                      leaves out (name, type, unit, price, picture) from it, and its tracked stock is
      *                      reserved; 409 "out_of_stock" (ApiException::isOutOfStock(), details in body()) when too few are left
+     *                      A price-bound product (Buchpreisbindung) is only sold at its catalog price: leave the
+     *                      price out or send exactly that; another one gives 422 "price_changed"
+     *                      (ApiException::isPriceChanged(), the catalog prices in body())
      *       - type:        digital, physical or physical-reduced (VAT category)
      *       - price/gross_price: net or gross unit price, one of both
      *       - unit:        hour, day, week, month, year, onetime or piece

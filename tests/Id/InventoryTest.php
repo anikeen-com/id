@@ -5,6 +5,7 @@ namespace Anikeen\Id\Tests;
 use Anikeen\Id\AnikeenId;
 use Anikeen\Id\Billable;
 use Anikeen\Id\Exceptions\ApiException;
+use Anikeen\Id\Exceptions\ValidationFailedException;
 use Illuminate\Database\Eloquent\Model;
 
 class InventoryTest extends TestCase
@@ -174,6 +175,38 @@ class InventoryTest extends TestCase
 
         $this->assertSame('POST /api/v1/orders Bearer user-token', $this->line(1));
         $this->assertSame(['billing_address_id' => 'a1', 'items' => [['product_id' => 'p1', 'units' => 2]]], $this->sentJson(1));
+    }
+
+    public function test_an_order_of_a_price_bound_product_at_an_outdated_price(): void
+    {
+        $this->respond(200, $this->page([])); // orders() reads the user's orders first
+        $this->respond(422, [
+            'message' => 'The price of Band 1 has changed: it is price-bound, order it at its catalog price.',
+            'error' => 'price_changed',
+            'errors' => ['items.0.gross_price' => ['The price of Band 1 has changed.']],
+            'codes' => ['items.0.gross_price' => 'price_changed'],
+            'product_id' => 'p1', 'sku' => '9783551804808', 'price' => 7.009346, 'gross_price' => 7.5,
+            'items' => [['index' => 0, 'product_id' => 'p1', 'sku' => '9783551804808', 'price' => 7.009346, 'gross_price' => 7.5]],
+        ]);
+
+        $user = new class extends Model {
+            use Billable;
+
+            protected $guarded = [];
+        };
+        $user->anikeen_id_access_token = 'user-token';
+
+        try {
+            $user->orders()->create(['billing_address_id' => 'a1', 'items' => [['product_id' => 'p1', 'units' => 1, 'gross_price' => '6.99']]]);
+            $this->fail('expected an exception');
+        } catch (ApiException $e) {
+            $this->assertTrue($e->isPriceChanged());
+            $this->assertFalse($e->isOutOfStock());
+            $this->assertInstanceOf(ValidationFailedException::class, $e);
+            $this->assertSame('price_changed', $e->errorCodeFor('items.0.gross_price'));
+            $this->assertSame(7.5, $e->body()->gross_price);
+            $this->assertSame(7.5, $e->body()->items[0]->gross_price);
+        }
     }
 
     public function test_operators(): void

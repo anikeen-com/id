@@ -105,6 +105,19 @@ class ApiException extends ResourceException
     }
 
     /**
+     * An order item named a price-bound product (Buchpreisbindung, `price_bound`) of the app's own
+     * catalog at another price than its catalog price, e.g. from an outdated copy (422
+     * "price_changed"). Nothing was created. body() has the first product's product_id, sku, price
+     * and gross_price (the catalog prices), and all refused items in `items` (index, product_id,
+     * sku, price, gross_price): update the copy, show the new price, then order again (or leave the
+     * price out).
+     */
+    public function isPriceChanged(): bool
+    {
+        return $this->status === 422 && $this->error === 'price_changed';
+    }
+
+    /**
      * The ID service could not be reached (network error, timeout) or failed (5xx): retry later.
      */
     public function isTemporary(): bool
