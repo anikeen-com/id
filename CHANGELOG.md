@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- `ApiException::isPriceChanged()`: an order item named a price-bound product (Buchpreisbindung) of
+  the app's own catalog at another price than its catalog price (`422` `price_changed`, nothing
+  created). `body()` has the catalog prices of the first product (`product_id`, `sku`, `price`,
+  `gross_price`) and all refused items in `items`. Needs the Anikeen ID release with
+  anikeen-com/identity#183; before it, the app's own price-bound products took any given price.
+- README: selling price-bound products.
+
 ## 3.9.0 (2026-11-21)
 
 Shipping labels: void a label, retry a purchase safely, read the label list; products can be

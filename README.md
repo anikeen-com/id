@@ -935,19 +935,28 @@ try {
         'billing_address_id' => $user->getUserData()->billing_address_id,
         'items' => [
             ['product_id' => $product->id, 'units' => 2],      // name, type, unit, price and picture from the product
-            ['product_id' => $other->id, 'units' => 1, 'gross_price' => '5.00'], // given values win
+            ['product_id' => $other->id, 'units' => 1, 'gross_price' => '5.00'], // given values win (not the price of a price-bound product)
         ],
     ]);
 } catch (ApiException $e) {
     if ($e->isOutOfStock()) {
         $e->body()->available; // also product_id, sku, requested
     }
+    if ($e->isPriceChanged()) {
+        // a price-bound book costs something else now: nothing was created
+        foreach ($e->body()->items as $item) {
+            $item->gross_price; // the catalog price; also index, product_id, sku, price
+        }
+    }
     throw $e;
 }
 ```
 
 Products of other apps and unavailable products are refused with `422` on `items.<n>.product_id`.
-Tracked products are sold in whole units.
+Tracked products are sold in whole units. **Price-bound products** (`price_bound`, Buchpreisbindung)
+are only sold at their catalog price, also by the app that owns them: leave the price out, or send
+exactly the catalog price. Another price (e.g. from an outdated copy) is refused with `422`
+`price_changed` (`isPriceChanged()`); update your copy and show the customer the new price first.
 
 ## Trusted apps
 
