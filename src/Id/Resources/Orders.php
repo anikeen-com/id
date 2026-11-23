@@ -52,6 +52,8 @@ class Orders extends BaseCollection
      *     confirm?: bool,
      *     calculate_shipping?: bool,
      *     shipping_method_id?: null|string,
+     *     free_shipping?: bool,
+     *     ship_after?: null|string,
      *     return_url?: null|string,
      *     metadata?: null|array,
      *     items: array<array{
@@ -72,6 +74,9 @@ class Orders extends BaseCollection
      *   - confirm:          Trusted apps: leave confirming and paying to the user (confirmation_url, expires after 24 hours; optional)
      *   - calculate_shipping: Anikeen ID adds the shipping from the app's shipping zones and the shipping address; send no shipping item then (optional)
      *   - shipping_method_id: The method of the matching zone the customer picked (optional, default: the zone's first; changeable on the confirmation page)
+     *   - free_shipping:    The app grants the shipping, e.g. with a membership: the zone's methods cost nothing (with calculate_shipping; optional)
+     *   - ship_after:       Date (Y-m-d) until which the warehouse holds the goods back, e.g. to send a customer's orders
+     *                       together in one parcel; today up to 3 months ahead (optional)
      *   - return_url:       Where the user returns after confirming (same origin as one of the app's redirect URIs; optional)
      *   - metadata:         The app's own data (max. 50 keys), returned as is in the API and webhooks (optional)
      *   - items:            Array of order items:

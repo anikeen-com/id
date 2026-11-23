@@ -44,7 +44,8 @@ CI (`.github/workflows/tests.yml`) runs PHPUnit on PHP 8.3 and 8.4.
   constants.
 - `src/Support/Query.php` – query-string builder.
 - `generator/generate-docs.php` – reflects the public methods of `AnikeenId` and `Billable` traits
-  into the README.
+  and of the App* resources (`$resources`) into the README. A new resource a trait returns goes
+  into `$resources`.
 
 ## Conventions
 
