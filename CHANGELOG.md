@@ -2,14 +2,27 @@
 
 ## Unreleased
 
+Small additions for what Anikeen ID already offers; only `isPriceChanged()` needs a new Anikeen ID
+release (anikeen-com/identity#183).
+
 ### Added
 
+- `AppShipping::zone()` (`GET client/shipping-zones/{id}`), `AppInventory::warehouse()`
+  (`GET client/warehouses/{id}`) and `AppInventory::supplier()` (`GET client/suppliers/{id}`): one
+  zone, warehouse or supplier, or `null` when the app has none with this ID.
+- Orders document `free_shipping` (the app grants the shipping of an order with
+  `calculate_shipping`: the method stays, at 0 €) and `ship_after` (the warehouse holds the goods
+  back until then, so a customer's orders leave in one parcel). Anikeen ID accepts both already.
+- Products and their `stocks` document `stock_blocked`: free units in blocked storage bins, in stock
+  but not for sale; `stock_available` is on hand minus reserved and blocked.
 - `ApiException::isPriceChanged()`: an order item named a price-bound product (Buchpreisbindung) of
   the app's own catalog at another price than its catalog price (`422` `price_changed`, nothing
   created). `body()` has the catalog prices of the first product (`product_id`, `sku`, `price`,
   `gross_price`) and all refused items in `items`. Needs the Anikeen ID release with
   anikeen-com/identity#183; before it, the app's own price-bound products took any given price.
-- README: selling price-bound products.
+- README: collected shipping, `stock_blocked`, selling price-bound products, and a generated
+  reference of the resources (`AppInventory`, `AppShipping`, `AppOrders`, `AppSubscriptions`,
+  `AppCheckoutSessions`, `AppCharge` …), which `composer docs` now reflects next to the traits.
 
 ## 3.9.0 (2026-11-21)
 
@@ -141,6 +154,7 @@ Scopes and guard support for apps acting in the Anikeen Console for a user; the 
 ### Fixed
 
 - The `anikeen` guard treats a token whose `sub` equals its `aud` (a client credentials token, as Passport issues them) as one without a user, instead of looking up a user by the client id.
+
 ## 3.5.0 (2026-11-08)
 
 The user's role for trusted apps; it needs an Anikeen ID release that sends it.

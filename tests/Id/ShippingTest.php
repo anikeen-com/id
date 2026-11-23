@@ -41,6 +41,19 @@ class ShippingTest extends TestCase
         $this->assertSame('DELETE /api/v1/client/shipping-zones/z2 Bearer app-token', $this->line(3));
     }
 
+    public function test_zone_returns_null_when_unknown(): void
+    {
+        $this->respond(200, ['data' => ['id' => 'z1', 'name' => 'Germany', 'countries' => ['DE'], 'methods' => [['id' => 'm1', 'name' => 'DHL Paket']]]]);
+        $this->respond(404, ['message' => 'Shipping zone not found.', 'error' => 'shipping_zone_not_found']);
+
+        $shipping = app(AnikeenId::class)->shipping();
+
+        $this->assertSame('DHL Paket', $shipping->zone('z1')->methods[0]->name);
+        $this->assertNull($shipping->zone('nope'));
+        $this->assertSame('GET /api/v1/client/shipping-zones/z1 Bearer app-token', $this->line(0));
+        $this->assertSame('GET /api/v1/client/shipping-zones/nope Bearer app-token', $this->line(1));
+    }
+
     public function test_rates(): void
     {
         $this->respond(200, ['data' => ['zone' => ['id' => 'z1', 'name' => 'Germany'], 'methods' => [['id' => 'm1', 'name' => 'DHL Paket', 'price' => '3.99']]]]);

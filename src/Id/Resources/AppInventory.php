@@ -14,12 +14,13 @@ use Anikeen\Id\Support\AppRequest;
  * (piece|onetime), price (net), gross_price (null when priced net), image_url, available,
  * track_inventory, backorderable (also sold without stock), stock_on_hand (physically in stock;
  * negative while backorders wait for the supplier), stock_reserved (held by open orders),
- * stock_available (on hand minus reserved, at least 0; null without track_inventory),
+ * stock_blocked (free units in blocked storage bins: in stock, but not for sale),
+ * stock_available (on hand minus reserved and blocked, at least 0; null without track_inventory),
  * stock_backordered (units sold beyond the stock, waiting for the supplier), low_stock_threshold,
  * low_stock, storage_location (shelf in the default warehouse), stocks (per warehouse: warehouse_id,
- * stock_on_hand, stock_reserved, stock_available, storage_location), price_bound (fixed book
- * price: the same in every sales channel), weight_grams, metadata (the app's own data), safety,
- * created_at, updated_at and deleted_at.
+ * stock_on_hand, stock_reserved, stock_blocked, stock_available, storage_location), price_bound
+ * (fixed book price: the same in every sales channel), weight_grams, metadata (the app's own data),
+ * safety, created_at, updated_at and deleted_at.
  *
  * A sales channel (an app that sells another app's catalog, set up in the Anikeen ID admin) reads
  * that catalog with the same methods, read-only: products of its assortment with its price
@@ -322,6 +323,18 @@ class AppInventory
     }
 
     /**
+     * The warehouse, or null if the catalog has none with this ID.
+     *
+     * @return object|null {id, name, code, address, country_iso, is_default, active, sort}
+     *
+     * @throws ApiException
+     */
+    public function warehouse(string $id): ?object
+    {
+        return $this->findOrNull(sprintf('v1/client/warehouses/%s', $id));
+    }
+
+    /**
      * Creates a warehouse; the first one becomes the default.
      *
      * @param array{name: string, code: string, address?: null|string, country_iso?: null|string, is_default?: bool, active?: bool, sort?: int} $attributes
@@ -470,6 +483,24 @@ class AppInventory
         return $rows;
     }
 
+    /**
+     * The object at $path, or null on 404.
+     *
+     * @throws ApiException
+     */
+    private function findOrNull(string $path): ?object
+    {
+        try {
+            return AppRequest::send('GET', $path)->data;
+        } catch (ApiException $e) {
+            if ($e->isNotFound()) {
+                return null;
+            }
+
+            throw $e;
+        }
+    }
+
     private function query(array $filters): array
     {
         return array_map(fn ($value) => is_bool($value) ? (int) $value : $value, $filters);
@@ -486,6 +517,16 @@ class AppInventory
     public function suppliers(?string $search = null): array
     {
         return $this->allPages('v1/client/suppliers', array_filter(['search' => $search]));
+    }
+
+    /**
+     * The supplier, or null if the app has none with this ID.
+     *
+     * @throws ApiException
+     */
+    public function supplier(string $id): ?object
+    {
+        return $this->findOrNull(sprintf('v1/client/suppliers/%s', $id));
     }
 
     /**

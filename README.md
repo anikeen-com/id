@@ -427,12 +427,29 @@ $shipping->createZone(['name' => 'Germany', 'countries' => ['DE'], 'sort' => 1, 
 
 // what shipping costs, e.g. for the cart (zone null: you don't ship there)
 $rates = $shipping->rates('DE', '53123', goodsTotal: '15.00');
+$shipping->zone($rates->zone->id);     // the zone with its methods (null if unknown)
 
 $order = $user->orders()->create([
     'billing_address_id' => $addressId,
     'calculate_shipping' => true,
     // 'shipping_method_id' => $rates->methods[0]->id,
     'items' => [['type' => 'physical-reduced', 'name' => 'Manga', 'unit' => 'piece', 'units' => 2, 'gross_price' => '7.50']],
+]);
+```
+
+**Collected shipping.** To send a customer's orders together, e.g. for a membership or a
+subscription, an order can take `free_shipping` (with `calculate_shipping`: the zone still has to
+cover the address and the method stays on the order, at 0 €) and `ship_after` (a date from today
+up to 3 months ahead): the order is paid as usual, but the warehouse holds its goods back until
+then and ships them with the customer's other orders to the same address in one parcel.
+
+```php
+$order = $user->orders()->create([
+    'billing_address_id' => $addressId,
+    'calculate_shipping' => true,
+    'free_shipping' => true,               // the app grants the shipping
+    'ship_after' => '2026-12-01',          // held back until then
+    'items' => [['product_id' => $product->id, 'units' => 1]],
 ]);
 ```
 
@@ -840,7 +857,7 @@ $product = $inventory->createProduct([
     'stock_on_hand' => 5,                 // initial stock, booked as an inventory count
 ]);
 
-$product->stock_available;                // stock_on_hand - stock_reserved
+$product->stock_available;                // stock_on_hand - stock_reserved - stock_blocked
 
 // sync a whole catalog by SKU (batches of 100, deleted products are restored)
 $inventory->upsertProducts($rows);
@@ -853,7 +870,9 @@ $inventory->deleteProduct($product->id);
 ```
 
 New products track their stock (`track_inventory`); without it they are a plain catalog entry
-and orders don't reserve anything. Products of apps never show in the public `v1/products`.
+and orders don't reserve anything. `stock_blocked` counts free units in blocked storage bins
+(or the quarantine area): still in stock, but not for sale; a change sends `product.updated`
+with `changed: ["stock_blocked"]`. Products of apps never show in the public `v1/products`.
 
 ### Stock
 
@@ -903,8 +922,10 @@ electronic address), the responsible person in the EU, and the warnings.
 $fair = $inventory->createWarehouse(['name' => 'Messelager', 'code' => 'ML']);
 $inventory->receive($product->id, 10, 'LS-778', warehouseId: $fair->id); // without: the default warehouse
 $inventory->transferStock($product->id, $fair->id, $defaultWarehouseId, 4);
+$inventory->warehouses();                // default first
+$inventory->warehouse($fair->id);        // null if unknown
 
-$product->stocks; // per warehouse: warehouse_id, stock_on_hand, stock_reserved, stock_available, storage_location
+$product->stocks; // per warehouse: warehouse_id, stock_on_hand, stock_reserved, stock_blocked, stock_available, storage_location
 ```
 
 A sales channel (an app selling another app's catalog) reads that catalog with `products()` at its
@@ -915,6 +936,7 @@ own prices and orders from it with `items.*.product_id`; everything else answers
 
 ```php
 $supplier = $inventory->createSupplier(['name' => 'Carlsen Verlag', 'country_iso' => 'DE', 'lead_time_days' => 3]);
+$inventory->supplier($supplier->id);     // null if unknown
 $order = $inventory->createPurchaseOrder([
     'supplier_id' => $supplier->id,
     'items' => [['product_id' => $product->id, 'quantity' => 10]], // unit_price: the supplier's, else the average cost
@@ -1857,6 +1879,9 @@ AnikeenId::withToken('abcdef123456')->getAuthedUser();
 
 ## Documentation
 
+The methods of the client (`AnikeenId`) and the user model (`Billable`) by API area, then the
+resources they return for the app's own token (`inventory()`, `shipping()`, …).
+
 ## AnikeenId
 
 ### Oauth
@@ -2068,6 +2093,154 @@ public function deleteGlobalPreference(string $key, ?int $ifVersion = null): voi
 public function sshKeys(): SshKeys
 public function setBillable(Billable|Model $billable): self
 public function getBillable(): Billable
+```
+
+
+## Resources
+
+What the methods above return for the app's own token. Nothing is requested until one of
+their methods is called.
+
+### AppInventory
+
+From `AnikeenId::inventory()`.
+
+```php
+public function products(array $filters = []): array
+public function product(string $id): ?object
+public function productBySku(string $sku): ?object
+public function createProduct(array $attributes): object
+public function upsertProducts(array $products): array
+public function updateProduct(string $id, array $attributes): object
+public function deleteProduct(string $id): void
+public function stockMovements(string $productId, array $filters = []): array
+public function bookStock(string $productId, string $type, int $quantity, ?string $reference = null, ?string $note = null, ?string $warehouseId = null): object
+public function receive(string $productId, int $quantity, ?string $reference = null, ?string $note = null, ?string $warehouseId = null): object
+public function count(string $productId, int $stockOnHand, ?string $reference = null, ?string $note = null, ?string $warehouseId = null): object
+public function priceHistory(string $productId): object
+public function transferStock(string $productId, string $fromWarehouseId, string $toWarehouseId, int $quantity, ?string $reference = null, ?string $note = null): array
+public function warehouses(): array
+public function warehouse(string $id): ?object
+public function createWarehouse(array $attributes): object
+public function updateWarehouse(string $id, array $attributes): object
+public function deleteWarehouse(string $id): void
+public function productsWithIncompleteSafety(): array
+public function operators(?string $search = null): array
+public function operator(string $id): ?object
+public function createOperator(array $attributes): object
+public function updateOperator(string $id, array $attributes): object
+public function deleteOperator(string $id): void
+public function suppliers(?string $search = null): array
+public function supplier(string $id): ?object
+public function createSupplier(array $attributes): object
+public function updateSupplier(string $id, array $attributes): object
+public function deleteSupplier(string $id): void
+public function purchaseOrders(array $filters = []): array
+public function purchaseOrder(string $id): ?object
+public function createPurchaseOrder(array $attributes): object
+public function orderPurchaseOrder(string $id): object
+public function receivePurchaseOrder(string $id, array $quantities, ?string $deliveryNote = null): object
+public function cancelPurchaseOrder(string $id): object
+```
+
+### AppShipping
+
+From `AnikeenId::shipping()`.
+
+```php
+public function zones(): array
+public function zone(string $id): ?object
+public function createZone(array $attributes): object
+public function updateZone(string $id, array $attributes): object
+public function deleteZone(string $id): void
+public function rates(string $countryIso, ?string $postalCode = null, string|int|float $goodsTotal = 0): object
+```
+
+### AppOrders
+
+From `AnikeenId::appOrders()`, `$user->appOrders()`.
+
+```php
+public function all(array $filters = []): array
+public function pending(array $filters = []): array
+public function find(string $id): ?object
+public function findByNumber(string $orderNumber): ?object
+public function invoicePdf(string $orderId): string
+```
+
+### AppSubscriptions
+
+From `$user->appSubscriptions()`.
+
+```php
+public function userId(): string
+public function create(array $attributes): AppSubscription
+public function find(string $id): ?AppSubscription
+public function all(array $filters = []): array
+```
+
+### AppSubscription
+
+From `$user->appSubscriptions()->find()` / `->create()`.
+
+```php
+public function update(array $attributes): AppSubscription
+public function change(array $attributes): AppSubscription
+public function cancelScheduledChange(): AppSubscription
+public function checkout(DateTimeInterface|string|null $startsAt = null, bool $billElapsedPeriods = false, string|float|null $maxNetAmount = null): AppSubscription
+public function revoke(bool $refund = false): AppSubscription
+public function pause(): AppSubscription
+public function resume(): AppSubscription
+public function refresh(): AppSubscription
+public function status(): string
+public function isDraft(): bool
+public function isActive(): bool
+public function isTrial(): bool
+public function isPaused(): bool
+public function isCancelling(): bool
+public function isExpired(): bool
+public function isCancelled(): bool
+```
+
+### AppCheckoutSessions
+
+From `AnikeenId::appCheckoutSessions()`, `$user->appCheckoutSessions()`.
+
+```php
+public function create(array $attributes): AppCheckoutSession
+public function find(string $id): ?AppCheckoutSession
+```
+
+### AppCheckoutSession
+
+From `->appCheckoutSessions()->find()` / `->create()`.
+
+```php
+public function subscriptions(): array
+public function cancel(): AppCheckoutSession
+public function refresh(): AppCheckoutSession
+public function confirmationUrl(): ?string
+public function isOpen(): bool
+public function isCompleted(): bool
+public function isCancelled(): bool
+public function subscriptionIds(): array
+```
+
+### AppCharge
+
+From `AnikeenId::createChargeForUser()`, `findChargeForUser()`, `voidChargeForUser()`.
+
+```php
+public function id(): string
+public function status(): string
+public function isOpen(): bool
+public function isBilled(): bool
+public function isVoided(): bool
+public function netAmount(): string
+public function grossAmount(): string
+public function orderId(): ?string
+public function metadata(): array
+public function occurredAt(): ?DateTimeImmutable
 ```
 
 

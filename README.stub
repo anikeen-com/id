@@ -427,12 +427,29 @@ $shipping->createZone(['name' => 'Germany', 'countries' => ['DE'], 'sort' => 1, 
 
 // what shipping costs, e.g. for the cart (zone null: you don't ship there)
 $rates = $shipping->rates('DE', '53123', goodsTotal: '15.00');
+$shipping->zone($rates->zone->id);     // the zone with its methods (null if unknown)
 
 $order = $user->orders()->create([
     'billing_address_id' => $addressId,
     'calculate_shipping' => true,
     // 'shipping_method_id' => $rates->methods[0]->id,
     'items' => [['type' => 'physical-reduced', 'name' => 'Manga', 'unit' => 'piece', 'units' => 2, 'gross_price' => '7.50']],
+]);
+```
+
+**Collected shipping.** To send a customer's orders together, e.g. for a membership or a
+subscription, an order can take `free_shipping` (with `calculate_shipping`: the zone still has to
+cover the address and the method stays on the order, at 0 €) and `ship_after` (a date from today
+up to 3 months ahead): the order is paid as usual, but the warehouse holds its goods back until
+then and ships them with the customer's other orders to the same address in one parcel.
+
+```php
+$order = $user->orders()->create([
+    'billing_address_id' => $addressId,
+    'calculate_shipping' => true,
+    'free_shipping' => true,               // the app grants the shipping
+    'ship_after' => '2026-12-01',          // held back until then
+    'items' => [['product_id' => $product->id, 'units' => 1]],
 ]);
 ```
 
@@ -840,7 +857,7 @@ $product = $inventory->createProduct([
     'stock_on_hand' => 5,                 // initial stock, booked as an inventory count
 ]);
 
-$product->stock_available;                // stock_on_hand - stock_reserved
+$product->stock_available;                // stock_on_hand - stock_reserved - stock_blocked
 
 // sync a whole catalog by SKU (batches of 100, deleted products are restored)
 $inventory->upsertProducts($rows);
@@ -853,7 +870,9 @@ $inventory->deleteProduct($product->id);
 ```
 
 New products track their stock (`track_inventory`); without it they are a plain catalog entry
-and orders don't reserve anything. Products of apps never show in the public `v1/products`.
+and orders don't reserve anything. `stock_blocked` counts free units in blocked storage bins
+(or the quarantine area): still in stock, but not for sale; a change sends `product.updated`
+with `changed: ["stock_blocked"]`. Products of apps never show in the public `v1/products`.
 
 ### Stock
 
@@ -903,8 +922,10 @@ electronic address), the responsible person in the EU, and the warnings.
 $fair = $inventory->createWarehouse(['name' => 'Messelager', 'code' => 'ML']);
 $inventory->receive($product->id, 10, 'LS-778', warehouseId: $fair->id); // without: the default warehouse
 $inventory->transferStock($product->id, $fair->id, $defaultWarehouseId, 4);
+$inventory->warehouses();                // default first
+$inventory->warehouse($fair->id);        // null if unknown
 
-$product->stocks; // per warehouse: warehouse_id, stock_on_hand, stock_reserved, stock_available, storage_location
+$product->stocks; // per warehouse: warehouse_id, stock_on_hand, stock_reserved, stock_blocked, stock_available, storage_location
 ```
 
 A sales channel (an app selling another app's catalog) reads that catalog with `products()` at its
@@ -915,6 +936,7 @@ own prices and orders from it with `items.*.product_id`; everything else answers
 
 ```php
 $supplier = $inventory->createSupplier(['name' => 'Carlsen Verlag', 'country_iso' => 'DE', 'lead_time_days' => 3]);
+$inventory->supplier($supplier->id);     // null if unknown
 $order = $inventory->createPurchaseOrder([
     'supplier_id' => $supplier->id,
     'items' => [['product_id' => $product->id, 'quantity' => 10]], // unit_price: the supplier's, else the average cost
@@ -1856,6 +1878,9 @@ AnikeenId::withToken('abcdef123456')->getAuthedUser();
 ```
 
 ## Documentation
+
+The methods of the client (`AnikeenId`) and the user model (`Billable`) by API area, then the
+resources they return for the app's own token (`inventory()`, `shipping()`, …).
 
 <!-- GENERATED-DOCS -->
 

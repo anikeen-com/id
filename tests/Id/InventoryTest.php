@@ -276,6 +276,38 @@ class InventoryTest extends TestCase
         $this->assertSame(['from_warehouse_id' => 'w1', 'to_warehouse_id' => 'w2', 'quantity' => 2], $this->sentJson(2));
     }
 
+    public function test_warehouse_and_supplier_return_null_when_unknown(): void
+    {
+        $this->respond(200, ['data' => ['id' => 'w1', 'code' => 'HL', 'is_default' => true]]);
+        $this->respond(404, ['message' => 'Warehouse not found.', 'error' => 'warehouse_not_found']);
+        $this->respond(200, ['data' => ['id' => 's1', 'name' => 'Carlsen', 'lead_time_days' => 3]]);
+        $this->respond(404, ['message' => 'Supplier not found.', 'error' => 'supplier_not_found']);
+
+        $inventory = app(AnikeenId::class)->inventory();
+
+        $this->assertSame('HL', $inventory->warehouse('w1')->code);
+        $this->assertNull($inventory->warehouse('nope'));
+        $this->assertSame(3, $inventory->supplier('s1')->lead_time_days);
+        $this->assertNull($inventory->supplier('nope'));
+
+        $this->assertSame('GET /api/v1/client/warehouses/w1 Bearer app-token', $this->line(0));
+        $this->assertSame('GET /api/v1/client/warehouses/nope Bearer app-token', $this->line(1));
+        $this->assertSame('GET /api/v1/client/suppliers/s1 Bearer app-token', $this->line(2));
+        $this->assertSame('GET /api/v1/client/suppliers/nope Bearer app-token', $this->line(3));
+    }
+
+    public function test_other_errors_are_thrown_when_finding_one(): void
+    {
+        $this->respond(403, ['message' => 'Read-only sales channel.', 'error' => 'channel_read_only']);
+
+        try {
+            app(AnikeenId::class)->inventory()->supplier('s1');
+            $this->fail('expected an exception');
+        } catch (ApiException $e) {
+            $this->assertSame('channel_read_only', $e->error);
+        }
+    }
+
     public function test_price_history(): void
     {
         $this->respond(200, ['data' => ['product_id' => 'p1', 'gross_price' => 10.0, 'changes' => [['source' => 'jpc', 'previous_gross_price' => 9.5, 'gross_price' => 10.0]]]]);
