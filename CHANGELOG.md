@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 3.10.0-beta.1 (2026-11-23)
 
 Small additions for what Anikeen ID already offers; only `isPriceChanged()` needs a new Anikeen ID
 release (anikeen-com/identity#183).
