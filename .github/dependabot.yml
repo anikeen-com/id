@@ -1,0 +1,36 @@
+# Dependabot: weekly version updates as few grouped PRs against `main`. Minor and patch updates
+# of an ecosystem come in one PR, majors one by one. Cooldown: a release must be a few days old
+# (supply-chain safety). Without a composer.lock (library) Dependabot widens the constraints.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: main
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: Europe/Berlin
+    cooldown:
+      default-days: 3
+    commit-message:
+      prefix: ci
+    groups:
+      github-actions:
+        patterns: ['*']
+
+  - package-ecosystem: composer
+    directory: /
+    target-branch: main
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: Europe/Berlin
+    cooldown:
+      default-days: 3
+    commit-message:
+      prefix: composer
+    groups:
+      composer:
+        update-types: [minor, patch]

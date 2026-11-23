@@ -18,7 +18,7 @@ vendor/bin/phpunit --filter AppSubscriptionsTest
 composer docs                                   # regenerate README.md from README.stub
 ```
 
-CI (`.github/workflows/tests.yml`) runs PHPUnit on PHP 8.3 and 8.4.
+CI (`.github/workflows/tests.yml`) runs PHPUnit on PHP 8.3, 8.4 and 8.5 (the servers run 8.5).
 
 ## Layout
 
