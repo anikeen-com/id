@@ -1,9 +1,9 @@
 # Changelog
 
-## 3.10.0-beta.1 (2026-11-23)
+## 3.10.0 (2026-11-23)
 
-Small additions for what Anikeen ID already offers; only `isPriceChanged()` needs a new Anikeen ID
-release (anikeen-com/identity#183).
+Small additions for what Anikeen ID already offers; `isPriceChanged()` needs
+anikeen-com/identity#183 (released). Same as 3.10.0-beta.1.
 
 ### Added
 
@@ -18,8 +18,8 @@ release (anikeen-com/identity#183).
 - `ApiException::isPriceChanged()`: an order item named a price-bound product (Buchpreisbindung) of
   the app's own catalog at another price than its catalog price (`422` `price_changed`, nothing
   created). `body()` has the catalog prices of the first product (`product_id`, `sku`, `price`,
-  `gross_price`) and all refused items in `items`. Needs the Anikeen ID release with
-  anikeen-com/identity#183; before it, the app's own price-bound products took any given price.
+  `gross_price`) and all refused items in `items`. Needs anikeen-com/identity#183
+  (released); before it, the app's own price-bound products took any given price.
 - README: collected shipping, `stock_blocked`, selling price-bound products, and a generated
   reference of the resources (`AppInventory`, `AppShipping`, `AppOrders`, `AppSubscriptions`,
   `AppCheckoutSessions`, `AppCharge` …), which `composer docs` now reflects next to the traits.
