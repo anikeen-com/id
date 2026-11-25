@@ -54,6 +54,7 @@ class Orders extends BaseCollection
      *     shipping_method_id?: null|string,
      *     free_shipping?: bool,
      *     free_shipping_countries?: null|list<string>,
+     *     free_shipping_excluded_postal_codes?: null|array<string, list<string>>,
      *     ship_after?: null|string,
      *     return_url?: null|string,
      *     metadata?: null|array,
@@ -78,6 +79,8 @@ class Orders extends BaseCollection
      *   - free_shipping:    The app grants the shipping, e.g. with a membership: the zone's methods cost nothing (with calculate_shipping; optional)
      *   - free_shipping_countries: ISO codes of the delivery countries free_shipping and ship_after apply to, e.g. ['DE'];
      *                       elsewhere the zone's normal price applies and nothing is held (optional, default: everywhere)
+     *   - free_shipping_excluded_postal_codes: Postal codes left out per country, e.g. ['DE' => ['27498', '78266']]
+     *                       (zone patterns: exact, `26*`, `25938...25999`; optional)
      *   - ship_after:       Date (Y-m-d) until which the warehouse holds the goods back, e.g. to send a customer's orders
      *                       together in one parcel; today up to 3 months ahead (optional)
      *   - return_url:       Where the user returns after confirming (same origin as one of the app's redirect URIs; optional)
