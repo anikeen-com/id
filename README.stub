@@ -442,12 +442,15 @@ subscription, an order can take `free_shipping` (with `calculate_shipping`: the 
 cover the address and the method stays on the order, at 0 €) and `ship_after` (a date from today
 up to 3 months ahead): the order is paid as usual, but the warehouse holds its goods back until
 then and ships them with the customer's other orders to the same address in one parcel.
+`free_shipping_countries` limits both to delivery countries: to other countries the order costs
+the zone's normal shipping and isn't held.
 
 ```php
 $order = $user->orders()->create([
     'billing_address_id' => $addressId,
     'calculate_shipping' => true,
     'free_shipping' => true,               // the app grants the shipping
+    'free_shipping_countries' => ['DE'],   // optional: only for delivery to Germany
     'ship_after' => '2026-12-01',          // held back until then
     'items' => [['product_id' => $product->id, 'units' => 1]],
 ]);
