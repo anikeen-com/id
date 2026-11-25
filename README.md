@@ -458,6 +458,21 @@ $order = $user->orders()->create([
 ]);
 ```
 
+**Delivery countries.** `shipping_countries` (with `shipping_excluded_postal_codes`, same format)
+limits where an order is delivered at all, e.g. a subscription only within Germany. To another
+address the order can't be paid: a draft asks for another address on the confirmation page, and
+`checkout: true` creates nothing and answers 409 with `error: shipping_unavailable`.
+
+```php
+$order = $user->orders()->create([
+    'billing_address_id' => $addressId,
+    'calculate_shipping' => true,
+    'shipping_countries' => ['DE'],                                   // only delivered to Germany …
+    'shipping_excluded_postal_codes' => ['DE' => ['27498', '78266']], // … without Helgoland, Büsingen
+    'items' => [['product_id' => $product->id, 'units' => 1]],
+]);
+```
+
 Once a paid order is sent, create a shipment. Anikeen ID adds its delivery note to the user's
 order documents (with the tracking link), mails it to the user (`'notify_customer' => false` if
 your shop sends its own mail) and sends `order.shipped` to your webhook endpoints.

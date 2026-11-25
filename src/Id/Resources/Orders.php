@@ -55,6 +55,8 @@ class Orders extends BaseCollection
      *     free_shipping?: bool,
      *     free_shipping_countries?: null|list<string>,
      *     free_shipping_excluded_postal_codes?: null|array<string, list<string>>,
+     *     shipping_countries?: null|list<string>,
+     *     shipping_excluded_postal_codes?: null|array<string, list<string>>,
      *     ship_after?: null|string,
      *     return_url?: null|string,
      *     metadata?: null|array,
@@ -81,6 +83,9 @@ class Orders extends BaseCollection
      *                       elsewhere the zone's normal price applies and nothing is held (optional, default: everywhere)
      *   - free_shipping_excluded_postal_codes: Postal codes left out per country, e.g. ['DE' => ['27498', '78266']]
      *                       (zone patterns: exact, `26*`, `25938...25999`; optional)
+     *   - shipping_countries: ISO codes of the countries the order is delivered to at all, e.g. ['DE']; to another address
+     *                       it can't be paid (checkout: 409 `shipping_unavailable`, nothing created; optional, default: everywhere)
+     *   - shipping_excluded_postal_codes: Postal codes left out of shipping_countries, e.g. ['DE' => ['27498', '78266']] (optional)
      *   - ship_after:       Date (Y-m-d) until which the warehouse holds the goods back, e.g. to send a customer's orders
      *                       together in one parcel; today up to 3 months ahead (optional)
      *   - return_url:       Where the user returns after confirming (same origin as one of the app's redirect URIs; optional)
