@@ -17,8 +17,9 @@ use Anikeen\Id\Support\AppRequest;
  *
  * Each zone is an object with id, name, countries (ISO codes), postal_codes (list of patterns:
  * exact `27498`, prefix `26*` or range `25938...25999`), sort and methods (each id, name,
- * description, gross_price, free_from: goods value from which it is free, age_check_price: no effect
- * any more – indexed titles are never shipped, active, sort).
+ * description, gross_price, free_from: goods value from which it is free, age_check_price: surcharge
+ * for an age check on delivery or null if the method can't do it – only for apps where Anikeen ID
+ * enabled the age check, active, sort).
  */
 class AppShipping
 {
@@ -66,7 +67,9 @@ class AppShipping
      *   - postal_codes: patterns, e.g. ["25980", "26*", "25938...25999"]; empty: the whole countries
      *   - sort:         tried in ascending order; put special zones (islands) first
      *   - methods:      e.g. "DHL Paket" 3.99 (gross), free_from 20.00 (goods value, gross),
-     *                   age_check_price: still accepted, no effect (there is no age check on delivery)
+     *                   age_check_price 1.99 (surcharge for the carrier's age check on delivery, e.g. DHL
+     *                   Alterssichtprüfung 18; null/left out: the method doesn't offer it; only used by
+     *                   apps where Anikeen ID enabled the age check)
      *
      * @throws ApiException 422 for an unknown country
      */
@@ -95,9 +98,11 @@ class AppShipping
 
     /**
      * What shipping costs for an address and goods worth $goodsTotal (gross), e.g. for the cart.
-     * $ageCheck is deprecated: indexed titles are never shipped, Anikeen ID answers true with 422.
+     * With $ageCheck only the methods that offer the age check on delivery, priced with its
+     * surcharge (an order with `age_check`) – only for apps where Anikeen ID enabled the age check,
+     * others get 422.
      *
-     * @return object {zone: null|{id, name}, methods: list<{id, name, description, price, free_from}>};
+     * @return object {zone: null|{id, name}, methods: list<{id, name, description, price, free_from, age_check_price}>};
      *                zone null: the app doesn't ship there
      *
      * @throws ApiException
