@@ -441,7 +441,8 @@ $order = $user->orders()->create([
 subscription, an order can take `free_shipping` (with `calculate_shipping`: the zone still has to
 cover the address and the method stays on the order, at 0 €) and `ship_after` (a date from today
 up to 3 months ahead): the order is paid as usual, but the warehouse holds its goods back until
-then and ships them with the customer's other orders to the same address in one parcel.
+then and ships them with the customer's other orders to the same address in one parcel. Only
+trusted apps set these fields (third-party apps get a 403).
 `free_shipping_countries` limits both to delivery countries: to other countries the order costs
 the zone's normal shipping and isn't held; `free_shipping_excluded_postal_codes` leaves postal
 codes out there (e.g. Helgoland).
