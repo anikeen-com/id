@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- Age check on delivery withdrawn (envoyr/anikeen-tasks#186): indexed titles are never shipped.
+  Anikeen ID refuses `age_check: true` on orders and `rates(..., ageCheck: true)` with 422; both are
+  documented as deprecated, `age_check_price` has no effect. Docs only, no code change.
+
 ## 3.11.0-beta.1 (2026-11-26)
 
 Age check on delivery (envoyr/anikeen-tasks#171); needs the identity release with `age_check`
