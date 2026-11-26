@@ -473,10 +473,23 @@ $order = $user->orders()->create([
 ]);
 ```
 
-**No age check on delivery.** Media indexed under § 15 JuSchG are never shipped, not even with the
-carrier's age check (DHL "Alterssichtprüfung"). Anikeen ID refuses `age_check: true` on orders and
-`rates(..., ageCheck: true)` with a 422 (`ApiException`, validation error on `age_check`) – don't
-send them; `age_check_price` on shipping methods has no effect.
+**Age check on delivery.** Only for apps where Anikeen ID enabled the age check (an option per
+app that Anikeen's admins switch on, e.g. for FSK 18 media): an order takes `age_check: true` and
+the carrier hands the parcel only to an adult (DHL "Alterssichtprüfung 18"). Anikeen ID then offers
+only the zone's methods with an `age_check_price` and adds that surcharge as its own line – always,
+also with `free_shipping`. Without such a method for the address the order can't be paid
+(`checkout: true` → 409 `shipping_unavailable`). `rates(..., ageCheck: true)` quotes only those
+methods. For other apps `age_check: true` and `ageCheck: true` are refused with a 422
+(`ApiException`, validation error on `age_check`, "This app doesn't offer an age check on delivery.").
+
+```php
+$order = $user->orders()->create([
+    'billing_address_id' => $addressId,
+    'calculate_shipping' => true,
+    'age_check' => true,                   // only if enabled for your app; surcharge shown at checkout
+    'items' => [['product_id' => $product->id, 'units' => 1]],
+]);
+```
 
 Once a paid order is sent, create a shipment. Anikeen ID adds its delivery note to the user's
 order documents (with the tracking link), mails it to the user (`'notify_customer' => false` if
