@@ -473,6 +473,22 @@ $order = $user->orders()->create([
 ]);
 ```
 
+**Age check on delivery.** For goods only adults may receive (e.g. media restricted under § 15
+JuSchG) an order takes `age_check: true`: the carrier hands the parcel only to an adult (DHL
+"Alterssichtprüfung 18"). Anikeen ID then offers only the zone's methods with an
+`age_check_price` and adds that surcharge as its own line – always, also with `free_shipping`.
+Without such a method for the address the order can't be paid (`checkout: true` → 409
+`shipping_unavailable`). `rates(..., ageCheck: true)` quotes only those methods.
+
+```php
+$order = $user->orders()->create([
+    'billing_address_id' => $addressId,
+    'calculate_shipping' => true,
+    'age_check' => true,                   // DHL Alterssichtprüfung 18, surcharge shown at checkout
+    'items' => [['product_id' => $product->id, 'units' => 1]],
+]);
+```
+
 Once a paid order is sent, create a shipment. Anikeen ID adds its delivery note to the user's
 order documents (with the tracking link), mails it to the user (`'notify_customer' => false` if
 your shop sends its own mail) and sends `order.shipped` to your webhook endpoints.
@@ -1373,6 +1389,7 @@ $session = $request->user()->appCheckoutSessions()->create([   // app token; or 
     'return_url' => route('builder.done'),                      // same origin as one of your redirect URIs
     'metadata' => ['cart' => $cart->id],                        // returned as is
     'idempotency_key' => "cart:{$cart->id}",                    // retries return the same session
+    'withdrawal_waiver_required' => true,                       // consumers request the early start (§ 356 Abs. 4 BGB)
     'subscriptions' => $cart->items->map(fn ($item) => [
         'group' => $team->id,
         'name' => $item->product->name,
@@ -2173,7 +2190,7 @@ public function zone(string $id): ?object
 public function createZone(array $attributes): object
 public function updateZone(string $id, array $attributes): object
 public function deleteZone(string $id): void
-public function rates(string $countryIso, ?string $postalCode = null, string|int|float $goodsTotal = 0): object
+public function rates(string $countryIso, ?string $postalCode = null, string|int|float $goodsTotal = 0, bool $ageCheck = false): object
 ```
 
 ### AppOrders

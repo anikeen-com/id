@@ -53,6 +53,7 @@ class Orders extends BaseCollection
      *     calculate_shipping?: bool,
      *     shipping_method_id?: null|string,
      *     free_shipping?: bool,
+     *     age_check?: bool,
      *     free_shipping_countries?: null|list<string>,
      *     free_shipping_excluded_postal_codes?: null|array<string, list<string>>,
      *     shipping_countries?: null|list<string>,
@@ -79,6 +80,9 @@ class Orders extends BaseCollection
      *   - calculate_shipping: Anikeen ID adds the shipping from the app's shipping zones and the shipping address; send no shipping item then (optional)
      *   - shipping_method_id: The method of the matching zone the customer picked (optional, default: the zone's first; changeable on the confirmation page)
      *   - free_shipping:    The app grants the shipping, e.g. with a membership: the zone's methods cost nothing (with calculate_shipping; optional)
+     *   - age_check:        The carrier checks the recipient's age on delivery (e.g. media restricted under § 15 JuSchG,
+     *                       DHL Alterssichtprüfung 18): only methods offering it, plus their surcharge – also with
+     *                       free_shipping; no such method for the address: can't be paid (checkout: 409 `shipping_unavailable`; optional)
      *   - free_shipping_countries: ISO codes of the delivery countries free_shipping and ship_after apply to, e.g. ['DE'];
      *                       elsewhere the zone's normal price applies and nothing is held (optional, default: everywhere)
      *   - free_shipping_excluded_postal_codes: Postal codes left out per country, e.g. ['DE' => ['27498', '78266']]

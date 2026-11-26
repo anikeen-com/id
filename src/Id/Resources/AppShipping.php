@@ -17,7 +17,8 @@ use Anikeen\Id\Support\AppRequest;
  *
  * Each zone is an object with id, name, countries (ISO codes), postal_codes (list of patterns:
  * exact `27498`, prefix `26*` or range `25938...25999`), sort and methods (each id, name,
- * description, gross_price, free_from: goods value from which it is free, active, sort).
+ * description, gross_price, free_from: goods value from which it is free, age_check_price: surcharge
+ * for an age check on delivery or null if the method can't do it, active, sort).
  */
 class AppShipping
 {
@@ -59,12 +60,14 @@ class AppShipping
      *     countries: list<string>,
      *     postal_codes?: null|list<string>,
      *     sort?: int,
-     *     methods?: list<array{name: string, gross_price: float|int|string, free_from?: null|float|int|string, description?: null|string, active?: bool, sort?: int}>
+     *     methods?: list<array{name: string, gross_price: float|int|string, free_from?: null|float|int|string, age_check_price?: null|float|int|string, description?: null|string, active?: bool, sort?: int}>
      * } $attributes
      *   - countries:    ISO 3166-1 alpha-2 codes, e.g. ["DE"]
      *   - postal_codes: patterns, e.g. ["25980", "26*", "25938...25999"]; empty: the whole countries
      *   - sort:         tried in ascending order; put special zones (islands) first
-     *   - methods:      e.g. "DHL Paket" 3.99 (gross), free_from 20.00 (goods value, gross)
+     *   - methods:      e.g. "DHL Paket" 3.99 (gross), free_from 20.00 (goods value, gross),
+     *                   age_check_price 1.99 (surcharge for the carrier's age check on delivery, e.g. DHL
+     *                   Alterssichtprüfung 18; null/left out: the method doesn't offer it)
      *
      * @throws ApiException 422 for an unknown country
      */
@@ -93,18 +96,21 @@ class AppShipping
 
     /**
      * What shipping costs for an address and goods worth $goodsTotal (gross), e.g. for the cart.
+     * With $ageCheck only the methods that offer the age check on delivery, priced with its
+     * surcharge (an order with `age_check`).
      *
-     * @return object {zone: null|{id, name}, methods: list<{id, name, description, price, free_from}>};
+     * @return object {zone: null|{id, name}, methods: list<{id, name, description, price, free_from, age_check_price}>};
      *                zone null: the app doesn't ship there
      *
      * @throws ApiException
      */
-    public function rates(string $countryIso, ?string $postalCode = null, float|int|string $goodsTotal = 0): object
+    public function rates(string $countryIso, ?string $postalCode = null, float|int|string $goodsTotal = 0, bool $ageCheck = false): object
     {
         return AppRequest::send('GET', 'v1/client/shipping-rates', null, array_filter([
             'country_iso' => $countryIso,
             'postal_code' => $postalCode,
             'goods_total' => (string) $goodsTotal,
+            'age_check' => $ageCheck ? '1' : null,
         ], fn ($value) => $value !== null))->data;
     }
 }

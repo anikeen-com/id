@@ -46,6 +46,7 @@ class AppCheckoutSessions
      *     return_url?: null|string,
      *     metadata?: null|array,
      *     idempotency_key?: null|string,
+     *     withdrawal_waiver_required?: bool,
      *     user_id?: string
      * } $attributes return_url must share scheme, host and port with one of the app's redirect
      *               URIs; the user comes back to it with `status` and `checkout_session`. A
@@ -55,6 +56,11 @@ class AppCheckoutSessions
      *               trial_payment_method `optional`: the session can be confirmed without a
      *               payment method only if all of its subscriptions are such trials.
      *               discount: see AppSubscriptions::create(); the confirmation page shows it.
+     *               withdrawal_waiver_required: consumers expressly request on the confirmation
+     *               page that the subscriptions start before the withdrawal period ends and
+     *               acknowledge the value compensation (§ 356 Abs. 4 / § 357a Abs. 2 BGB); stored
+     *               and quoted in the confirmation, returned as `withdrawal_waiver`. Business
+     *               customers (verified VAT ID) aren't asked.
      *
      * @throws ApiException 422 validation (e.g. return_url), 409 "idempotency_key_conflict"
      */
