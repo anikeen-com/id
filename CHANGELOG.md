@@ -1,5 +1,20 @@
 # Changelog
 
+## 3.11.0-beta.1 (2026-11-26)
+
+Age check on delivery (envoyr/anikeen-tasks#171); needs the identity release with `age_check`
+(on staging).
+
+### Added
+
+- `AppShipping::rates()` takes `ageCheck`: only methods offering the age check on delivery, priced
+  with its surcharge. Methods document `age_check_price` (gross surcharge, `null` = not offered).
+- Orders document `age_check` (the carrier hands the parcel only to an adult, e.g. DHL
+  Alterssichtprüfung 18; only methods offering it, surcharge always charged; none for the address →
+  409 `shipping_unavailable`).
+- Checkout sessions document `withdrawal_waiver_required` (consumers request the early start on the
+  confirmation page; Anikeen ID accepts it already) – envoyr/anikeen-tasks#169.
+
 ## 3.10.0 (2026-11-23)
 
 Small additions for what Anikeen ID already offers; `isPriceChanged()` needs

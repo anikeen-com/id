@@ -65,4 +65,15 @@ class ShippingTest extends TestCase
         parse_str($this->sent[0]['request']->getUri()->getQuery(), $query);
         $this->assertSame(['country_iso' => 'DE', 'postal_code' => '53123', 'goods_total' => '15.00'], $query);
     }
+
+    public function test_rates_with_the_age_check(): void
+    {
+        $this->respond(200, ['data' => ['zone' => ['id' => 'z1', 'name' => 'Germany'], 'methods' => [['id' => 'm1', 'name' => 'DHL Paket', 'price' => '5.98', 'age_check_price' => '1.99']]]]);
+
+        $rates = app(AnikeenId::class)->shipping()->rates('DE', '53123', goodsTotal: '7.50', ageCheck: true);
+
+        $this->assertSame('1.99', $rates->methods[0]->age_check_price);
+        parse_str($this->sent[0]['request']->getUri()->getQuery(), $query);
+        $this->assertSame(['country_iso' => 'DE', 'postal_code' => '53123', 'goods_total' => '7.50', 'age_check' => '1'], $query);
+    }
 }
