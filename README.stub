@@ -1389,7 +1389,9 @@ $session = $request->user()->appCheckoutSessions()->create([   // app token; or 
     'return_url' => route('builder.done'),                      // same origin as one of your redirect URIs
     'metadata' => ['cart' => $cart->id],                        // returned as is
     'idempotency_key' => "cart:{$cart->id}",                    // retries return the same session
-    'withdrawal_waiver_required' => true,                       // consumers request the early start (§ 356 Abs. 4 BGB)
+    'withdrawal_waiver_required' => true,                       // consumers request the early start (§ 356 Abs. 4 BGB);
+                                                                // default false: nobody is asked, nothing is stored;
+                                                                // business customers (verified VAT ID) are never asked
     'subscriptions' => $cart->items->map(fn ($item) => [
         'group' => $team->id,
         'name' => $item->product->name,

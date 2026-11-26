@@ -79,7 +79,8 @@ class Orders extends BaseCollection
      *   - confirm:          Trusted apps: leave confirming and paying to the user (confirmation_url, expires after 24 hours; optional)
      *   - calculate_shipping: Anikeen ID adds the shipping from the app's shipping zones and the shipping address; send no shipping item then (optional)
      *   - shipping_method_id: The method of the matching zone the customer picked (optional, default: the zone's first; changeable on the confirmation page)
-     *   - free_shipping:    The app grants the shipping, e.g. with a membership: the zone's methods cost nothing (with calculate_shipping; optional)
+     *   - free_shipping:    The app grants the shipping, e.g. with a membership: the zone's methods cost nothing (with calculate_shipping;
+     *                       an age_check surcharge is still charged; optional)
      *   - age_check:        The carrier checks the recipient's age on delivery (e.g. media restricted under § 15 JuSchG,
      *                       DHL Alterssichtprüfung 18): only methods offering it, plus their surcharge – also with
      *                       free_shipping; no such method for the address: can't be paid (checkout: 409 `shipping_unavailable`; optional)
