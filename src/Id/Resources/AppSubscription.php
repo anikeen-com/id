@@ -40,7 +40,7 @@ use JsonSerializable;
  * @property ?array $payload
  * @property ?string $idempotency_key
  * @property ?string $checkout_session_id the checkout session the user confirms it in, if any
- * @property ?object $scheduled_change {applies_at, name, description, unit, price, discount, created_at}: a change() for the period end
+ * @property ?object $scheduled_change {applies_at, product_id, name, description, unit, price, discount, created_at}: a change() for the period end
  * @property ?string $product_id the service of the app's catalog it was sold from (null: inline)
  * @property ?string $coupon_id the coupon it was bought with
  * @property ?object $pricing how Anikeen ID computed the contract price of a catalog subscription:
@@ -102,7 +102,7 @@ class AppSubscription implements JsonSerializable
      * optionally `coupon_code`): its unit, the price Anikeen ID computes for the subscription's
      * customer and group, and its name unless one is sent. It can't take an inline unit or price
      * (422). A product with another monthly cap is a resize: create a new subscription with
-     * `predecessor_id` instead (422 on product_id).
+     * `predecessor_id` instead (422 `monthly_cap_differs`).
      *
      * @param array{
      *     apply: string,
@@ -123,7 +123,8 @@ class AppSubscription implements JsonSerializable
      *
      * @throws ApiException 409 "not_changeable" (not running: draft, paused, cancelling, …),
      *                      "proration_not_possible", "credit_exceeds_bill",
-     *                      "billing_address_missing"; 422 validation
+     *                      "billing_address_missing"; 422 validation or, with product_id, a
+     *                      PricingError code (isPricingError(), also `monthly_cap_differs`)
      */
     public function change(array $attributes): self
     {
