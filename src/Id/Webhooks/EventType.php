@@ -107,7 +107,7 @@ final class EventType
 
     /**
      * A stock movement was booked for a product of the app's catalog (receipt, return, damage,
-     * count, reservation, release, sale): `data.object` is the product with its new stock,
+     * count, reservation, release, sale, cancellation): `data.object` is the product with its new stock,
      * `data.movement` the movement. Opt-in (not through `*`).
      */
     public const PRODUCT_STOCK_CHANGED = 'product.stock_changed';
