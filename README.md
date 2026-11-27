@@ -1107,7 +1107,47 @@ in checkout sessions `subscriptions.<n>.…`). `change()` answers the same codes
 `predecessor_id` instead); `scheduled_change.product_id` names the product a `period_end` change
 switches to.
 `product.updated` also reports changes of `kind`,
-`family`, `monthly_cap`, `options` and `coupon_required`, to keep a read copy.
+`family`, `monthly_cap`, `options`, `coupon_required`, `setup_price`, `transfer_price` and the
+purchase prices, to keep a read copy (or to drop a cached catalog).
+
+#### Purchase prices and first-period prices (domains)
+
+A service can carry its **purchase prices** (`cost_price`, `cost_setup_price`, `cost_transfer_price`,
+net – e.g. what the registrar charges for a domain). Only the owning app ever sees them, never a
+sales channel or a customer, and **no offer, coupon or reseller discount goes below them** (the
+quote says `floored`). `setup_price` and `transfer_price` make the **first period** dearer: a new
+setup costs the list price plus `setup_price`, a move-in at least `transfer_price`. The subscription
+starts at that price and Anikeen ID schedules the renewal price itself (`scheduled_change` with
+`first_period`, not cancellable) – you schedule nothing.
+
+```php
+use Anikeen\Id\Enums\FirstPeriod;
+
+$product = $inventory->createProduct([
+    'sku' => 'domain-de', 'name' => 'Domain .de', 'kind' => ProductKind::SERVICE, 'unit' => 'year',
+    'family' => 'domain', 'options' => ['tld' => 'de'],
+    'price' => '11.10', 'setup_price' => '5.73', 'transfer_price' => '13.25',             // net list prices
+    'cost_price' => '10.00', 'cost_setup_price' => '5.00', 'cost_transfer_price' => '12.00', // never public
+]);
+
+$quote = $inventory->price($product->id, $user->anikeen_id, 'team-1', firstPeriod: FirstPeriod::TRANSFER);
+$quote->first_period?->price;             // the first year (null when it costs what every year costs)
+$quote->renewal_price;                    // every year after
+
+// a price list of every TLD for one customer in one request (≤ 1000 products)
+$quotes = $inventory->quotes(['family' => 'domain', 'group' => 'team-1', 'user_id' => $user->anikeen_id]);
+
+$user->appSubscriptions()->create([
+    'group' => 'team-1',
+    'product_id' => $product->id,
+    'first_period' => FirstPeriod::TRANSFER, // default setup; none for a domain that already runs
+    'description' => 'example.de',
+]);
+```
+
+A dearer first period can't start with a trial (`first_period_with_trial`): once a product gets a
+`setup_price`, catalog subscriptions with a trial need `first_period` `none`. Show `floored` to
+nobody but your staff – it says the price equals the purchase price.
 
 ## Trusted apps
 
@@ -2244,7 +2284,8 @@ public function productBySku(string $sku): ?object
 public function createProduct(array $attributes): object
 public function upsertProducts(array $products): array
 public function updateProduct(string $id, array $attributes): object
-public function price(string $productId, ?string $userId = null, ?string $group = null, ?string $couponCode = null): object
+public function price(string $productId, ?string $userId = null, ?string $group = null, ?string $couponCode = null, ?string $firstPeriod = null): object
+public function quotes(array $attributes): array
 public function resellerDiscounts(array $filters = []): array
 public function resellerDiscount(string $id): ?object
 public function createResellerDiscount(array $attributes): object

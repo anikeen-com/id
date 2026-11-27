@@ -30,6 +30,7 @@ class AppCheckoutSessions
      *         group?: null|string,
      *         product_id?: null|string,
      *         coupon_code?: null|string,
+     *         first_period?: null|string,
      *         name?: string,
      *         description?: null|string,
      *         unit?: string,
@@ -60,7 +61,8 @@ class AppCheckoutSessions
      *               discount: see AppSubscriptions::create(); the confirmation page shows it.
      *               product_id / coupon_code: a service of the app's catalog, priced by Anikeen ID
      *               (see AppSubscriptions::create()); a refused one answers 422 with a PricingError
-     *               code and the field `subscriptions.<index>.product_id` or `.coupon_code`.
+     *               code and the field `subscriptions.<index>.product_id` or `.coupon_code`;
+     *               first_period like AppSubscriptions::create().
      *               withdrawal_waiver_required: consumers expressly request on the confirmation
      *               page that the subscriptions start before the withdrawal period ends and
      *               acknowledge the value compensation (§ 356 Abs. 4 / § 357a Abs. 2 BGB); stored

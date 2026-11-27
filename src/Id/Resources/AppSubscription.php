@@ -40,13 +40,15 @@ use JsonSerializable;
  * @property ?array $payload
  * @property ?string $idempotency_key
  * @property ?string $checkout_session_id the checkout session the user confirms it in, if any
- * @property ?object $scheduled_change {applies_at, product_id, name, description, unit, price, discount, created_at}: a change() for the period end
+ * @property ?object $scheduled_change {applies_at, product_id, name, description, unit, price, discount, created_at, first_period}: a change() for the period end;
+ *                    first_period (setup|transfer) when it carries the renewal price after a dearer first period (scheduled by Anikeen ID, not cancellable)
  * @property ?string $product_id the service of the app's catalog it was sold from (null: inline)
  * @property ?string $coupon_id the coupon it was bought with
  * @property ?object $pricing how Anikeen ID computed the contract price of a catalog subscription:
  *                    {list_price, list_monthly_cap, price, monthly_cap, offer: ?{id, name, type,
  *                    amount}, reseller_discount: ?{id, family, percent}, coupon: ?{id, code, type,
- *                    amount}, priced_at}; kept when the catalog changes
+ *                    amount}, first_period: ?{kind, list_price, price}, priced_at}; kept when the
+ *                    catalog changes (no `floored`: the purchase price stays out of it)
  */
 class AppSubscription implements JsonSerializable
 {
@@ -207,7 +209,9 @@ class AppSubscription implements JsonSerializable
     /**
      * Drop the change scheduled for the period end (nothing happens without one).
      *
-     * @throws ApiException
+     * @throws ApiException 409 "not_changeable" when it carries the renewal price after a dearer
+     *                      first period (scheduled_change.first_period): schedule another product
+     *                      instead
      */
     public function cancelScheduledChange(): self
     {
