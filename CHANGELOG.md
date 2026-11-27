@@ -1,5 +1,29 @@
 # Changelog
 
+## 3.11.0 (2026-11-27)
+
+Service products, catalog prices and domains as services (epic envoyr/anikeen-tasks#205), plus the
+age check on delivery (envoyr/anikeen-tasks#171). Same code as 3.11.0-beta.4; collects
+3.11.0-beta.1 to beta.4 below. Needs the identity release with service products, pricing error
+codes, app coupons and domain products (anikeen-com/identity#263–#266, released 2026-11-27).
+
+### Added
+
+- Service products (`kind`, `family`, `unit`, `monthly_cap`, `options`, `coupon_required`), list,
+  setup/transfer and purchase prices; `AppInventory::price()` and `quotes()` (prices for one
+  customer as Anikeen ID computes them), reseller discounts, `Enums\ProductKind`,
+  `Enums\FirstPeriod`, `Enums\PricingError` and `ApiException::isPricingError()` (beta.2, beta.4).
+- App subscriptions and checkout session items by `product_id` (+ `coupon_code`, `first_period`),
+  metered usage records (beta.2, beta.4).
+- `PricingError::MONTHLY_CAP_DIFFERS`, `scheduled_change.product_id` (beta.3).
+- Age check on delivery: `AppShipping::rates(..., ageCheck)`, `age_check` on orders,
+  `withdrawal_waiver_required` on checkout sessions (beta.1).
+
+### Changed
+
+- `AppSubscription::change()` with `product_id` reports refused products and coupons with a
+  `PricingError` code (beta.3).
+
 ## 3.11.0-beta.4 (2026-11-27)
 
 Domains as services in Anikeen ID (envoyr/anikeen-tasks#237); needs the identity release with #237
