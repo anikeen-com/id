@@ -4,9 +4,9 @@ namespace Anikeen\Id\Enums;
 
 /**
  * Why Anikeen ID refused to sell a catalog service (422 with `error`, see
- * ApiException::isPricingError()): from AppInventory::price(), subscriptions and checkout sessions
- * with `product_id`, and usage records with `product_id`. `errors` names the field (`product_id`
- * or `coupon_code`, in checkout sessions `subscriptions.<index>.product_id` …).
+ * ApiException::isPricingError()): from AppInventory::price(), subscriptions, checkout sessions and
+ * change() with `product_id`, and usage records with `product_id`. `errors` names the field
+ * (`product_id` or `coupon_code`, in checkout sessions `subscriptions.<index>.product_id` …).
  */
 class PricingError
 {
@@ -47,6 +47,12 @@ class PricingError
     const COUPON_REQUIRED = 'coupon_required';
 
     /**
+     * change() to a product with another monthly cap than the subscription: replace the subscription
+     * (a new one with `predecessor_id`) instead.
+     */
+    const MONTHLY_CAP_DIFFERS = 'monthly_cap_differs';
+
+    /**
      * @return list<string>
      */
     public static function all(): array
@@ -63,6 +69,7 @@ class PricingError
             self::COUPON_NOT_APPLICABLE,
             self::COUPON_NOT_ALLOWED,
             self::COUPON_REQUIRED,
+            self::MONTHLY_CAP_DIFFERS,
         ];
     }
 

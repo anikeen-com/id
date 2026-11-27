@@ -1102,8 +1102,10 @@ group. Refusals are `422` with `error` (`PricingError`): `product_not_found`,
 `coupon_invalid`, `coupon_expired`, `coupon_used_up`, `coupon_not_applicable`,
 `coupon_not_allowed`, `coupon_required` (`price()` answers an unknown product with `404` instead,
 `isNotFound()`); `errors()` names the field (`product_id` or `coupon_code`,
-in checkout sessions `subscriptions.<n>.…`). `change()` with `product_id` currently reports
-them as plain field errors (`errors()` on `product_id`/`coupon_code`, `error` is `null`).
+in checkout sessions `subscriptions.<n>.…`). `change()` answers the same codes, and
+`monthly_cap_differs` for a product with another monthly cap (replace the subscription with
+`predecessor_id` instead); `scheduled_change.product_id` names the product a `period_end` change
+switches to.
 `product.updated` also reports changes of `kind`,
 `family`, `monthly_cap`, `options` and `coupon_required`, to keep a read copy.
 
@@ -1243,7 +1245,7 @@ $subscription->change(['apply' => AppSubscription::APPLY_NOW, 'price' => '0.0274
 
 // downgrade from the next period on
 $subscription->change(['apply' => AppSubscription::APPLY_PERIOD_END, 'price' => '4.99']);
-$subscription->scheduled_change;       // {applies_at, name, description, unit, price, discount, created_at}
+$subscription->scheduled_change;       // {applies_at, product_id, name, description, unit, price, discount, created_at}
 $subscription->cancelScheduledChange(); // keep the current values after all
 ```
 

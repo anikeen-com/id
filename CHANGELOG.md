@@ -1,5 +1,20 @@
 # Changelog
 
+## 3.11.0-beta.3 (2026-11-27)
+
+Needs the identity release with envoyr/anikeen-tasks#234 (on staging).
+
+### Changed
+
+- `AppSubscription::change()` with `product_id` reports refused products and coupons like create and
+  checkout: 422 with a `PricingError` code (`isPricingError()` is `true`), instead of plain field
+  errors without `error`.
+
+### Added
+
+- `PricingError::MONTHLY_CAP_DIFFERS` (`change()` to a product with another monthly cap).
+- `scheduled_change.product_id`: the product a `period_end` change switches to.
+
 ## 3.11.0-beta.2 (2026-11-27)
 
 Service products and catalog prices (envoyr/anikeen-tasks#207, epic #205); needs the identity
