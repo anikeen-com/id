@@ -4,9 +4,9 @@ namespace Anikeen\Id\Enums;
 
 /**
  * Why Anikeen ID refused to sell a catalog service (422 with `error`, see
- * ApiException::isPricingError()): from AppInventory::price(), subscriptions and checkout sessions
- * with `product_id`, change() with `product_id`, and usage records with `product_id`. `errors` names the field (`product_id`
- * or `coupon_code`, in checkout sessions `subscriptions.<index>.product_id` …).
+ * ApiException::isPricingError()): from AppInventory::price(), subscriptions, checkout sessions and
+ * change() with `product_id`, and usage records with `product_id`. `errors` names the field
+ * (`product_id` or `coupon_code`, in checkout sessions `subscriptions.<index>.product_id` …).
  */
 class PricingError
 {

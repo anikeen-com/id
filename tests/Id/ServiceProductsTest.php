@@ -200,6 +200,19 @@ class ServiceProductsTest extends TestCase
         $this->assertSame('p2', $subscription->product_id);
     }
 
+    public function test_a_refused_change_is_a_pricing_error(): void
+    {
+        $this->respond(422, $this->pricingRefusal(PricingError::MONTHLY_CAP_DIFFERS, 'product_id'));
+
+        try {
+            (new AppSubscription((object) ['id' => '01JSUB']))->change(['apply' => AppSubscription::APPLY_PERIOD_END, 'product_id' => 'p3']);
+            $this->fail('No exception thrown');
+        } catch (ValidationFailedException $e) {
+            $this->assertTrue($e->isPricingError(PricingError::MONTHLY_CAP_DIFFERS));
+            $this->assertFalse(PricingError::isCouponError($e->error));
+        }
+    }
+
     public function test_usage_records(): void
     {
         $record = ['id' => 'u1', 'subscription_id' => '01JSUB', 'meter' => 'server_traffic', 'quantity' => '12.5', 'unit' => 'gigabyte', 'unit_price' => '0.01', 'product_id' => 'p9'];
