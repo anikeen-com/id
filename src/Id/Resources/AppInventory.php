@@ -23,8 +23,11 @@ use Anikeen\Id\Support\AppRequest;
  * (fixed book price: the same in every sales channel), weight_grams, metadata (the app's own data),
  * safety, created_at, updated_at and deleted_at; services also carry family (the app's product
  * family, e.g. "server"), monthly_cap (net, at most this per calendar month; hour and day units),
- * options (the app's plan options, e.g. cores and memory) and coupon_required (sold only with a
- * coupon).
+ * options (the app's plan options, e.g. cores and memory), coupon_required (sold only with a
+ * coupon), setup_price / transfer_price (net list prices of a dearer first period, e.g. a domain's
+ * registration and transfer) and the purchase prices cost_price, cost_setup_price and
+ * cost_transfer_price (net; only the owning app ever sees them – never a sales channel or a
+ * customer; no offer, coupon or reseller discount goes below them).
  *
  * Services (kind `service`, e.g. the servers, domains and storage of a hosting app) are sold with
  * subscriptions: `product_id` on AppSubscriptions::create() and checkout sessions, and Anikeen ID
@@ -137,6 +140,11 @@ class AppInventory
      *     monthly_cap?: null|float|string,
      *     options?: null|array,
      *     coupon_required?: bool,
+     *     setup_price?: null|float|string,
+     *     transfer_price?: null|float|string,
+     *     cost_price?: null|float|string,
+     *     cost_setup_price?: null|float|string,
+     *     cost_transfer_price?: null|float|string,
      *     image_url?: null|string,
      *     available?: bool,
      *     price_bound?: bool,
@@ -171,6 +179,14 @@ class AppInventory
      *   - options:             Services: the app's plan options, e.g. cores, memory, GPU (any JSON
      *                          object, max. 50 keys)
      *   - coupon_required:     Services: sold only with a coupon naming the product (default false)
+     *   - setup_price:         Services: net, the first period of a new subscription costs this on
+     *                          top (e.g. a domain registration; see price() and FirstPeriod)
+     *   - transfer_price:      Services: net, the first period of a move-in costs at least this
+     *                          (e.g. a domain transfer)
+     *   - cost_price, cost_setup_price, cost_transfer_price: Services: net purchase prices per unit,
+     *                          of the setup and of a transfer (e.g. the registrar's). Never public;
+     *                          reductions stop there. Send cost_price = price while it is unknown to
+     *                          allow no reduction at all
      *   - image_url:           Picture for orders and invoices (optional)
      *   - available:           Whether it can be ordered (default true)
      *   - price_bound:         Fixed book price (Buchpreisbindung): the same in every sales channel and
@@ -235,29 +251,62 @@ class AppInventory
      * What a service costs one customer for a new subscription, as Anikeen ID computes it: the list
      * price, then the best running offer, then the reseller discount of $group (the reseller pays
      * the lower of reseller and offer price, never a coupon on top) or a percentage coupon off the
-     * offer price. The monthly cap is cut in the same proportion. A subscription created with the
-     * same `product_id`, `group` and `coupon_code` gets this price as its contract price.
+     * offer price – never below the product's purchase price (`floored` when that stopped it). The
+     * monthly cap is cut in the same proportion. A subscription created with the same `product_id`,
+     * `group`, `coupon_code` and `first_period` gets this price as its contract price.
+     *
+     * A service with a setup or transfer price has a dearer first period (`first_period`: the same
+     * reduction, never below its own purchase price nor below the renewal price): the subscription
+     * starts at `first_period.price` and Anikeen ID changes it to `renewal_price` at the end of that
+     * period by itself (its `scheduled_change` with `first_period`). Null when the first period
+     * costs what every period costs.
      *
      * @param string|null $userId The customer (offers for one customer; checks coupon uses)
      * @param string|null $group The subscription group, e.g. a team (offers and reseller discounts
      *                           for it)
      * @param string|null $couponCode A coupon the customer entered
+     * @param string|null $firstPeriod FirstPeriod::SETUP (default), TRANSFER or NONE
      * @return object {product_id, unit, list_price, list_monthly_cap, price, monthly_cap,
      *                offer: ?{id, name, type, amount}, reseller_discount: ?{id, family, percent},
-     *                coupon: ?{id, code, type, amount}} (net prices)
+     *                coupon: ?{id, code, type, amount}, floored, renewal_price,
+     *                first_period: ?{kind, list_price, price, floored}} (net prices)
      *
      * @throws ApiException 404 "product_not_found"; 422 with a PricingError code
      *                      (isPricingError()): product_not_a_service, product_unavailable,
      *                      coupon_invalid, coupon_expired, coupon_used_up, coupon_not_applicable,
      *                      coupon_not_allowed, coupon_required
      */
-    public function price(string $productId, ?string $userId = null, ?string $group = null, ?string $couponCode = null): object
+    public function price(string $productId, ?string $userId = null, ?string $group = null, ?string $couponCode = null, ?string $firstPeriod = null): object
     {
         return AppRequest::send('GET', sprintf('v1/client/products/%s/price', $productId), null, array_filter([
             'user_id' => $userId,
             'group' => $group,
             'coupon_code' => $couponCode,
+            'first_period' => $firstPeriod,
         ], fn ($value) => $value !== null && $value !== ''))->data;
+    }
+
+    /**
+     * The prices (like price()) of many services for one customer at once, e.g. a price list of
+     * every domain TLD: by `product_ids` (at most 1000, answered in that order) or a whole `family`
+     * (its available services, at most 1000, by SKU). A product that can't be sold like that is an
+     * entry {product_id, error, message} (a PricingError code), not an exception.
+     *
+     * @param array{
+     *     product_ids?: list<string>,
+     *     family?: string,
+     *     user_id?: null|string,
+     *     group?: null|string,
+     *     coupon_code?: null|string,
+     *     first_period?: null|string
+     * } $attributes product_ids or family (one of both); the rest like price()
+     * @return list<object> quotes as price() returns them, or {product_id, error, message}
+     *
+     * @throws ApiException 422 validation, "too_many_products" (a family with more than 1000)
+     */
+    public function quotes(array $attributes): array
+    {
+        return AppRequest::send('POST', 'v1/client/products/quotes', array_filter($attributes, fn ($value) => $value !== null && $value !== ''))->data;
     }
 
     /**

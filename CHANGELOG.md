@@ -1,5 +1,24 @@
 # Changelog
 
+## 3.11.0-beta.4 (2026-11-27)
+
+Domains as services in Anikeen ID (envoyr/anikeen-tasks#237); needs the identity release with #237
+(on staging).
+
+### Added
+
+- Products document `setup_price`, `transfer_price` (net list prices of a dearer first period) and
+  the purchase prices `cost_price`, `cost_setup_price`, `cost_transfer_price` (only the owning app
+  sees them; no reduction goes below them). `createProduct()`, `upsertProducts()` and `updateProduct()` take them.
+- `Enums\FirstPeriod` (`setup`, `transfer`, `none`): `first_period` on `AppSubscriptions::create()`
+  and checkout session items, and `AppInventory::price(..., $firstPeriod)`. The quote adds
+  `floored`, `renewal_price` and `first_period` ({kind, list_price, price, floored}); subscriptions
+  start at the first-period price and carry the renewal price as `scheduled_change` with
+  `first_period` (`cancelScheduledChange()` answers 409 for it).
+- `AppInventory::quotes()` (`POST client/products/quotes`): the prices of up to 1000 services
+  (`product_ids` or a `family`) for one customer at once.
+- `PricingError::FIRST_PERIOD_WITH_TRIAL`.
+
 ## 3.11.0-beta.3 (2026-11-27)
 
 Needs the identity release with envoyr/anikeen-tasks#234 (on staging).

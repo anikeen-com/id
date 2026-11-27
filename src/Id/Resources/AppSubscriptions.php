@@ -49,6 +49,7 @@ class AppSubscriptions
      *     group?: null|string,
      *     product_id?: null|string,
      *     coupon_code?: null|string,
+     *     first_period?: null|string,
      *     name?: string,
      *     description?: null|string,
      *     unit?: string,
@@ -69,7 +70,12 @@ class AppSubscriptions
      *               product_id: a service of the app's catalog (prohibits unit, price, monthly_cap
      *               and discount); name and description default to the product's, sent ones win
      *               (e.g. the server's own name). coupon_code: a coupon the customer entered (only
-     *               with product_id). Without product_id, name, unit and price are required.
+     *               with product_id). first_period (only with product_id, FirstPeriod): setup
+     *               (default) or transfer start a service with a setup/transfer price at its
+     *               dearer first-period price, then Anikeen ID schedules the renewal price itself
+     *               (`scheduled_change.first_period`); none for a service that already runs
+     *               (takeovers always). Not with a trial (422 first_period_with_trial).
+     *               Without product_id, name, unit and price are required.
      *               monthly_cap: net, at most this per calendar month (hour and day units only,
      *               at most 2 decimals, not below price; null = no cap).
      *               predecessor_id: the subscription this one replaces (a resize; same user and

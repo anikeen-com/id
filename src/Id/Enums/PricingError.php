@@ -53,6 +53,12 @@ class PricingError
     const MONTHLY_CAP_DIFFERS = 'monthly_cap_differs';
 
     /**
+     * A first period that costs more (setup, transfer; FirstPeriod) can't start with a free trial:
+     * send `first_period` none or no trial.
+     */
+    const FIRST_PERIOD_WITH_TRIAL = 'first_period_with_trial';
+
+    /**
      * @return list<string>
      */
     public static function all(): array
@@ -70,6 +76,7 @@ class PricingError
             self::COUPON_NOT_ALLOWED,
             self::COUPON_REQUIRED,
             self::MONTHLY_CAP_DIFFERS,
+            self::FIRST_PERIOD_WITH_TRIAL,
         ];
     }
 
