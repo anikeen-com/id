@@ -875,7 +875,8 @@ stock right along the order:
 | created (draft) | the units are **reserved** (`stock_reserved`), or `409` `out_of_stock` and nothing is created |
 | paid (`order.completed`) | the units are **taken** from `stock_on_hand` |
 | cancelled, expired or deleted before payment | the reservation is **released** |
-| revoked or refunded after payment | nothing changes: book a `return` when the goods are back |
+| revoked or refunded after payment, units shipped | nothing changes: book a `return` when the goods are back |
+| paid units cancelled before shipping | the units never shipped come back (`cancellation`) |
 
 ### Products
 
@@ -923,7 +924,7 @@ $inventory->bookStock($product->id, 'damage', 1, note: 'Corner bent');        //
 $inventory->bookStock($product->id, 'adjustment', -2);                        // either sign
 $inventory->count($product->id, 7);                                           // inventory count
 
-$inventory->stockMovements($product->id);   // newest first, also reservation, release and sale
+$inventory->stockMovements($product->id);   // newest first, also reservation, release, sale and cancellation
 ```
 
 ### Product safety (GPSR)

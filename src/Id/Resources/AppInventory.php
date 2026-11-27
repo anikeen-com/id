@@ -40,8 +40,8 @@ use Anikeen\Id\Support\AppRequest;
  * the product, reserves tracked stock while the order is open, takes it when the order is paid
  * and releases it when the order is cancelled, expires or is deleted.
  *
- * Each stock movement is an object with id, product_id, type (reservation|release|sale, booked
- * along orders; receipt|return|adjustment|damage|count, booked by the app), quantity (change of
+ * Each stock movement is an object with id, product_id, type (reservation|release|sale|cancellation,
+ * booked along orders – cancellation: paid units cancelled before shipping, back in stock; receipt|return|adjustment|damage|count, booked by the app), quantity (change of
  * the stock on hand), reserved_change, stock_on_hand and stock_reserved (after the movement),
  * order_id, order_item_id (returns), reference, note and created_at; warehouse_id and
  * warehouse_stock_on_hand (after the movement, in that warehouse) for catalogs with warehouses.
