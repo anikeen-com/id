@@ -1123,7 +1123,7 @@ starts at that price and Anikeen ID schedules the renewal price itself (`schedul
 ```php
 use Anikeen\Id\Enums\FirstPeriod;
 
-$inventory->createProduct([
+$product = $inventory->createProduct([
     'sku' => 'domain-de', 'name' => 'Domain .de', 'kind' => ProductKind::SERVICE, 'unit' => 'year',
     'family' => 'domain', 'options' => ['tld' => 'de'],
     'price' => '11.10', 'setup_price' => '5.73', 'transfer_price' => '13.25',             // net list prices
@@ -1145,7 +1145,9 @@ $user->appSubscriptions()->create([
 ]);
 ```
 
-A dearer first period can't start with a trial (`first_period_with_trial`).
+A dearer first period can't start with a trial (`first_period_with_trial`): once a product gets a
+`setup_price`, catalog subscriptions with a trial need `first_period` `none`. Show `floored` to
+nobody but your staff – it says the price equals the purchase price.
 
 ## Trusted apps
 

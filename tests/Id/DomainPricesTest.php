@@ -23,6 +23,7 @@ class DomainPricesTest extends TestCase
         $product = app(AnikeenId::class)->inventory()->createProduct($attributes);
 
         $this->assertEquals(10, $product->cost_price);
+        $this->assertSame('POST /api/v1/client/products Bearer app-token', $this->line(0));
         $this->assertSame($attributes, $this->sentJson(0));
     }
 
@@ -35,6 +36,7 @@ class DomainPricesTest extends TestCase
 
         $quote = app(AnikeenId::class)->inventory()->price('p1', firstPeriod: FirstPeriod::TRANSFER);
 
+        $this->assertSame('GET /api/v1/client/products/p1/price Bearer app-token', $this->line(0));
         parse_str($this->sent[0]['request']->getUri()->getQuery(), $query);
         $this->assertSame(['first_period' => 'transfer'], $query);
         $this->assertSame(13.25, $quote->first_period->price);
@@ -50,11 +52,32 @@ class DomainPricesTest extends TestCase
 
         $quotes = app(AnikeenId::class)->inventory()->quotes(['family' => 'domain', 'group' => 'team-1', 'coupon_code' => null]);
 
-        $request = $this->sent[0]['request'];
-        $this->assertSame('POST /api/v1/client/products/quotes', $request->getMethod() . ' ' . $request->getUri()->getPath());
+        $this->assertSame('POST /api/v1/client/products/quotes Bearer app-token', $this->line(0));
         $this->assertSame(['family' => 'domain', 'group' => 'team-1'], $this->sentJson(0));
         $this->assertCount(2, $quotes);
         $this->assertSame(PricingError::PRODUCT_UNAVAILABLE, $quotes[1]->error);
+    }
+
+    public function test_quotes_by_id_are_asked_in_parts(): void
+    {
+        $ids = array_map(fn (int $i) => 'p' . $i, range(1, 1001));
+        $this->respond(200, ['data' => array_map(fn (string $id) => ['product_id' => $id], array_slice($ids, 0, 1000))]);
+        $this->respond(200, ['data' => [['product_id' => 'p1001']]]);
+
+        $quotes = app(AnikeenId::class)->inventory()->quotes(['product_ids' => array_combine($ids, $ids), 'group' => 'team-1']);
+
+        $this->assertCount(1001, $quotes);
+        $this->assertSame('p1001', $quotes[1000]->product_id);
+        $this->assertSame(['p1001'], $this->sentJson(1)['product_ids']);
+        $this->assertSame(range(0, 999), array_keys($this->sentJson(0)['product_ids']));
+        $this->assertSame('team-1', $this->sentJson(1)['group']);
+    }
+
+    private function line(int $index): string
+    {
+        $request = $this->sent[$index]['request'];
+
+        return $request->getMethod() . ' ' . $request->getUri()->getPath() . ' ' . $request->getHeaderLine('Authorization');
     }
 
     public function test_enums(): void

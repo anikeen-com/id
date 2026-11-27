@@ -48,7 +48,7 @@ use JsonSerializable;
  *                    {list_price, list_monthly_cap, price, monthly_cap, offer: ?{id, name, type,
  *                    amount}, reseller_discount: ?{id, family, percent}, coupon: ?{id, code, type,
  *                    amount}, first_period: ?{kind, list_price, price}, priced_at}; kept when the
- *                    catalog changes
+ *                    catalog changes (no `floored`: the purchase price stays out of it)
  */
 class AppSubscription implements JsonSerializable
 {

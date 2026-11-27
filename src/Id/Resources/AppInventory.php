@@ -64,6 +64,9 @@ class AppInventory
     /** Products per batch request (Anikeen ID's limit). */
     public const BATCH_SIZE = 100;
 
+    /** quotes(): products per request (Anikeen ID answers at most this many). */
+    public const QUOTES_SIZE = 1000;
+
     /**
      * All matching products, by SKU.
      *
@@ -274,7 +277,8 @@ class AppInventory
      * @throws ApiException 404 "product_not_found"; 422 with a PricingError code
      *                      (isPricingError()): product_not_a_service, product_unavailable,
      *                      coupon_invalid, coupon_expired, coupon_used_up, coupon_not_applicable,
-     *                      coupon_not_allowed, coupon_required
+     *                      coupon_not_allowed, coupon_required; 422 validation without a code for
+     *                      an unknown first_period (use the FirstPeriod constants)
      */
     public function price(string $productId, ?string $userId = null, ?string $group = null, ?string $couponCode = null, ?string $firstPeriod = null): object
     {
@@ -288,8 +292,8 @@ class AppInventory
 
     /**
      * The prices (like price()) of many services for one customer at once, e.g. a price list of
-     * every domain TLD: by `product_ids` (at most 1000, answered in that order) or a whole `family`
-     * (its available services, at most 1000, by SKU). A product that can't be sold like that is an
+     * every domain TLD: by `product_ids` (answered in that order; more than 1000 are asked in parts)
+     * or a whole `family` (its available services, at most 1000, by SKU). A product that can't be sold like that is an
      * entry {product_id, error, message} (a PricingError code), not an exception.
      *
      * @param array{
@@ -302,11 +306,25 @@ class AppInventory
      * } $attributes product_ids or family (one of both); the rest like price()
      * @return list<object> quotes as price() returns them, or {product_id, error, message}
      *
-     * @throws ApiException 422 validation, "too_many_products" (a family with more than 1000)
+     * @throws ApiException 422 validation (e.g. an unknown first_period), "too_many_products" (a
+     *                      family with more than 1000)
      */
     public function quotes(array $attributes): array
     {
-        return AppRequest::send('POST', 'v1/client/products/quotes', array_filter($attributes, fn ($value) => $value !== null && $value !== ''))->data;
+        $attributes = array_filter($attributes, fn ($value) => $value !== null && $value !== '');
+
+        if (! isset($attributes['product_ids'])) {
+            return AppRequest::send('POST', 'v1/client/products/quotes', $attributes)->data;
+        }
+
+        // more IDs than one request takes: in parts, in the order asked
+        $quotes = [];
+
+        foreach (array_chunk(array_values($attributes['product_ids']), self::QUOTES_SIZE) as $ids) {
+            array_push($quotes, ...AppRequest::send('POST', 'v1/client/products/quotes', ['product_ids' => $ids] + $attributes)->data);
+        }
+
+        return $quotes;
     }
 
     /**

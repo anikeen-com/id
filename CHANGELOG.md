@@ -17,7 +17,8 @@ Domains as services in Anikeen ID (envoyr/anikeen-tasks#237); needs the identity
   `first_period` (`cancelScheduledChange()` answers 409 for it).
 - `AppInventory::quotes()` (`POST client/products/quotes`): the prices of up to 1000 services
   (`product_ids` or a `family`) for one customer at once.
-- `PricingError::FIRST_PERIOD_WITH_TRIAL`.
+- `PricingError::FIRST_PERIOD_WITH_TRIAL`. Note: once a product has a `setup_price`, catalog
+  subscriptions with a trial need `first_period` `none` (else 422).
 
 ## 3.11.0-beta.3 (2026-11-27)
 
