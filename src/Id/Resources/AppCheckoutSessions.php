@@ -28,10 +28,12 @@ class AppCheckoutSessions
      * @param array{
      *     subscriptions: list<array{id: string}|array{
      *         group?: null|string,
-     *         name: string,
+     *         product_id?: null|string,
+     *         coupon_code?: null|string,
+     *         name?: string,
      *         description?: null|string,
-     *         unit: string,
-     *         price: float|string,
+     *         unit?: string,
+     *         price?: float|string,
      *         monthly_cap?: null|float|string,
      *         predecessor_id?: null|string,
      *         vat_rate?: float,
@@ -56,6 +58,9 @@ class AppCheckoutSessions
      *               trial_payment_method `optional`: the session can be confirmed without a
      *               payment method only if all of its subscriptions are such trials.
      *               discount: see AppSubscriptions::create(); the confirmation page shows it.
+     *               product_id / coupon_code: a service of the app's catalog, priced by Anikeen ID
+     *               (see AppSubscriptions::create()); a refused one answers 422 with a PricingError
+     *               code and the field `subscriptions.<index>.product_id` or `.coupon_code`.
      *               withdrawal_waiver_required: consumers expressly request on the confirmation
      *               page that the subscriptions start before the withdrawal period ends and
      *               acknowledge the value compensation (§ 356 Abs. 4 / § 357a Abs. 2 BGB); stored

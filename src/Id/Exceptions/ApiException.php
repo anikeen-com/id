@@ -2,6 +2,7 @@
 
 namespace Anikeen\Id\Exceptions;
 
+use Anikeen\Id\Enums\PricingError;
 use Anikeen\Id\Result;
 use Psr\Http\Message\ResponseInterface;
 use Throwable;
@@ -115,6 +116,22 @@ class ApiException extends ResourceException
     public function isPriceChanged(): bool
     {
         return $this->status === 422 && $this->error === 'price_changed';
+    }
+
+    /**
+     * Anikeen ID refused to sell a catalog service as asked (422 with a PricingError code in
+     * `error`): an unknown, unavailable or non-recurring product, or a coupon that doesn't apply.
+     * From AppInventory::price(), subscriptions and checkout sessions with `product_id`, and usage
+     * records with `product_id`. $code narrows it to one code, e.g. PricingError::COUPON_EXPIRED;
+     * PricingError::isCouponError($e->error) tells coupon from product problems. Nothing was
+     * created.
+     */
+    public function isPricingError(?string $code = null): bool
+    {
+        return $this->status === 422
+            && $this->error !== null
+            && in_array($this->error, PricingError::all(), true)
+            && ($code === null || $this->error === $code);
     }
 
     /**

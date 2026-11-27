@@ -41,6 +41,12 @@ use JsonSerializable;
  * @property ?string $idempotency_key
  * @property ?string $checkout_session_id the checkout session the user confirms it in, if any
  * @property ?object $scheduled_change {applies_at, name, description, unit, price, discount, created_at}: a change() for the period end
+ * @property ?string $product_id the service of the app's catalog it was sold from (null: inline)
+ * @property ?string $coupon_id the coupon it was bought with
+ * @property ?object $pricing how Anikeen ID computed the contract price of a catalog subscription:
+ *                    {list_price, list_monthly_cap, price, monthly_cap, offer: ?{id, name, type,
+ *                    amount}, reseller_discount: ?{id, family, percent}, coupon: ?{id, code, type,
+ *                    amount}, priced_at}; kept when the catalog changes
  */
 class AppSubscription implements JsonSerializable
 {
@@ -92,8 +98,16 @@ class AppSubscription implements JsonSerializable
      * During a free trial nothing was billed, so both just change what the trial ends in.
      * Webhook `subscription.updated` (with `data.previous_attributes`) when the change takes effect.
      *
+     * A subscription sold from the catalog changes to another service with `product_id` (and
+     * optionally `coupon_code`): its unit, the price Anikeen ID computes for the subscription's
+     * customer and group, and its name unless one is sent. It can't take an inline unit or price
+     * (422). A product with another monthly cap is a resize: create a new subscription with
+     * `predecessor_id` instead (422 on product_id).
+     *
      * @param array{
      *     apply: string,
+     *     product_id?: string,
+     *     coupon_code?: null|string,
      *     price?: float|string,
      *     unit?: string,
      *     name?: string,
@@ -101,6 +115,8 @@ class AppSubscription implements JsonSerializable
      *     discount?: null|array{label: string, percent_off?: float|string, amount_off?: float|string, duration: string, duration_in_periods?: int}
      * } $attributes apply: self::APPLY_NOW or self::APPLY_PERIOD_END.
      *               unit: a recurring unit (hour, day, week, month, year).
+     *               product_id: prohibits unit, price and discount; coupon_code only with it
+     *               (keeping the subscription's coupon takes no new use).
      *               discount: replaces the discount from the next billed period on, null ends it;
      *               required with a new unit when the current one counts in periods or is an
      *               amount_off. Subscriptions with a monthly cap change only at the period end.
@@ -112,6 +128,79 @@ class AppSubscription implements JsonSerializable
     public function change(array $attributes): self
     {
         return $this->send('PUT', '/change', $attributes);
+    }
+
+    /**
+     * Report metered usage of the subscription, e.g. a month's traffic. Anikeen ID bills it on the
+     * user's open bill. Either with a meter product of the app's catalog (`product_id`, a service
+     * with unit gigabyte or gibibyte: its list price minus the reseller discount of the
+     * subscription's group) or inline with `unit` and `unit_price`.
+     *
+     * @param array{
+     *     meter: string,
+     *     period_start: string,
+     *     period_end: string,
+     *     quantity: float|int|string,
+     *     idempotency_key: string,
+     *     product_id?: string,
+     *     unit?: string,
+     *     unit_price?: float|string,
+     *     description?: null|string
+     * } $attributes The usage:
+     *   - meter:           What was measured, e.g. server_traffic ([a-z0-9_.-], max. 64)
+     *   - period_start/period_end: The measured period (ISO 8601; the end not in the future)
+     *   - quantity:        Used units (more than 0, 4 decimals)
+     *   - idempotency_key: The app's key for this usage (max. 255): a repeat returns the record
+     *   - product_id:      A meter product (prohibits unit and unit_price)
+     *   - unit/unit_price: gigabyte or gibibyte and the net price per unit, without product_id
+     *   - description:     Shown on the bill (max. 255, optional)
+     * @return object {id, subscription_id, meter, period_start, period_end, quantity, unit,
+     *                unit_price, product_id, amount, description, idempotency_key, status,
+     *                order_id, order_item_id, voided_at, created_at}
+     *
+     * @throws ApiException 422 validation or "product_not_metered"; 409 "not_started",
+     *                      "period_before_subscription", "usage_already_recorded" (body() has
+     *                      usage_record_id), "idempotency_key_conflict", "billing_address_missing"
+     */
+    public function recordUsage(array $attributes): object
+    {
+        return AppRequest::send('POST', sprintf('v1/client/subscriptions/%s/usage', $this->id), $attributes)->data;
+    }
+
+    /**
+     * The subscription's usage records, newest period first.
+     *
+     * @param string|null $meter Only usage of this meter
+     * @return list<object> each as recordUsage() returns it
+     *
+     * @throws ApiException
+     */
+    public function usageRecords(?string $meter = null): array
+    {
+        $records = [];
+        $page = 1;
+
+        do {
+            $result = AppRequest::send('GET', sprintf('v1/client/subscriptions/%s/usage', $this->id), null, array_filter([
+                'meter' => $meter,
+                'per_page' => 100,
+                'page' => $page,
+            ], fn ($value) => $value !== null));
+            array_push($records, ...$result->data);
+            $lastPage = (int) ($result->meta->last_page ?? $page);
+        } while ($page++ < $lastPage);
+
+        return $records;
+    }
+
+    /**
+     * Void a usage record while its order is still open.
+     *
+     * @throws ApiException 404 "usage_record_not_found", 409 "usage_already_charged"
+     */
+    public function voidUsage(string $recordId): object
+    {
+        return AppRequest::send('DELETE', sprintf('v1/client/subscriptions/%s/usage/%s', $this->id, $recordId))->data;
     }
 
     /**

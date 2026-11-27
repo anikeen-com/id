@@ -813,6 +813,8 @@ well as with the app's (`app*()`). It carries:
   later),
 - `isBillingLimitReached()` (409 `billing_limit_reached`: a [charge](#charges-and-billing-limit-trusted-apps)
   would take the user's monthly bill above their billing limit),
+- `isPricingError($code = null)` (422 with a `PricingError` code: a [catalog service](#services-and-catalog-prices)
+  or its coupon can't be sold like that),
 - `body()`: the error response, for errors with details (e.g. `remaining` of
   `billing_limit_reached`).
 
@@ -1018,6 +1020,91 @@ Tracked products are sold in whole units. **Price-bound products** (`price_bound
 are only sold at their catalog price, also by the app that owns them: leave the price out, or send
 exactly the catalog price. Another price (e.g. from an outdated copy) is refused with `422`
 `price_changed` (`isPriceChanged()`); update your copy and show the customer the new price first.
+
+### Services and catalog prices
+
+Besides goods, a catalog holds **services** (`kind` `service`, `ProductKind::SERVICE`) – e.g. the
+servers, domains and storage of a hosting app. They have no stock and are never price-bound; they
+are sold with [subscriptions](#app-subscriptions-trusted-apps-no-user-token) and metered usage,
+and **Anikeen ID computes their price**: list price → best running offer → the reseller discount
+of the subscription `group` (the reseller pays the lower of reseller and offer price, never a
+coupon on top) or a percentage coupon off the offer price. Offers and coupons are kept in Anikeen
+ID's commerce panel, reseller discounts there or with the API below.
+
+```php
+use Anikeen\Id\Enums\PricingError;
+use Anikeen\Id\Enums\ProductKind;
+use Anikeen\Id\Exceptions\ApiException;
+use Anikeen\Id\Resources\AppSubscription;
+
+$product = $inventory->createProduct([
+    'sku' => 'server-s',
+    'name' => 'Cloud Server S',
+    'kind' => ProductKind::SERVICE,
+    'unit' => 'hour',                     // hour, day, week, month, year, onetime, gigabyte, gibibyte
+    'price' => '0.0137',                  // net list price per unit
+    'monthly_cap' => '9.50',              // hour/day only: at most this per calendar month
+    'family' => 'server',                 // reseller discounts can be per family
+    'options' => ['cores' => 2, 'memory' => 4096], // your plan options
+]);
+
+$inventory->products(['kind' => ProductKind::SERVICE, 'family' => 'server']);
+
+// what one customer pays (e.g. for the order summary)
+$quote = $inventory->price($product->id, $user->anikeen_id, group: 'team-1', couponCode: 'WELCOME');
+$quote->price;                            // also list_price, monthly_cap, offer, reseller_discount, coupon
+
+// sell it: name, unit, price and cap come from the catalog (name/description you send win)
+try {
+    $subscription = $user->appSubscriptions()->create([
+        'group' => 'team-1',
+        'product_id' => $product->id,
+        'coupon_code' => 'WELCOME',       // optional
+        'description' => 'web-01.example.com',
+        'idempotency_key' => 'server:42',
+    ]);
+} catch (ApiException $e) {
+    if ($e->isPricingError(PricingError::COUPON_EXPIRED)) {
+        // tell the customer; PricingError::isCouponError($e->error) for every coupon problem
+    }
+    throw $e;
+}
+
+$subscription->product_id;                // also coupon_id
+$subscription->pricing;                   // how the contract price was made (list_price, offer, coupon …)
+
+// checkout sessions take the same per subscription
+$user->appCheckoutSessions()->create(['subscriptions' => [['group' => 'team-1', 'product_id' => $product->id]]]);
+
+// a plan change to another service (same monthly cap; otherwise a new subscription with predecessor_id)
+$subscription->change(['apply' => AppSubscription::APPLY_NOW, 'product_id' => $larger->id]);
+
+// metered usage priced by a meter product (unit gigabyte/gibibyte), minus the reseller discount
+$subscription->recordUsage([
+    'meter' => 'server_traffic',
+    'product_id' => $traffic->id,
+    'period_start' => '2026-11-01T00:00:00+01:00',
+    'period_end' => '2026-12-01T00:00:00+01:00',
+    'quantity' => '120.5',
+    'idempotency_key' => 'traffic:server-42:2026-11',
+]);
+
+// reseller discounts: percent off the list price for a group, per family or for all services
+$inventory->createResellerDiscount(['group' => 'team-1', 'family' => 'server', 'percent' => 15]);
+$inventory->resellerDiscounts(['group' => 'team-1']);
+```
+
+The price is the subscription's **contract price**: later changes of the catalog, offers or
+discounts apply to new subscriptions only. A catalog subscription can't take an inline `unit` or
+`price` (neither on create nor on `change()`), and its draft can't change unit, price, cap or
+group. Refusals are `422` with `error` (`PricingError`): `product_not_found`,
+`product_not_a_service`, `product_unavailable`, `product_not_recurring`, `product_not_metered`,
+`coupon_invalid`, `coupon_expired`, `coupon_used_up`, `coupon_not_applicable`,
+`coupon_not_allowed`, `coupon_required`; `errors()` names the field (`product_id` or `coupon_code`,
+in checkout sessions `subscriptions.<n>.…`). `change()` with `product_id` currently reports
+them as plain field errors (`errors()` on `product_id`/`coupon_code`, `error` is `null`).
+`product.updated` also reports changes of `kind`,
+`family`, `monthly_cap`, `options` and `coupon_required`, to keep a read copy.
 
 ## Trusted apps
 

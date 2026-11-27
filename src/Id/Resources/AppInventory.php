@@ -10,8 +10,9 @@ use Anikeen\Id\Support\AppRequest;
  * any app): app(AnikeenId::class)->inventory(). Nothing is requested until a method is called.
  *
  * Each product is an object with id, sku (the app's article number, unique per app), name,
- * description, type (digital|physical|physical-reduced, the order item type), unit
- * (piece|onetime), price (net), gross_price (null when priced net), image_url, available,
+ * description, kind (goods|service, see ProductKind), type (digital|physical|physical-reduced, the
+ * order item type), unit (goods: piece|onetime; services: hour|day|week|month|year|onetime|
+ * gigabyte|gibibyte), price (net), gross_price (null when priced net), image_url, available,
  * track_inventory, backorderable (also sold without stock), stock_on_hand (physically in stock;
  * negative while backorders wait for the supplier), stock_reserved (held by open orders),
  * stock_blocked (free units in blocked storage bins: in stock, but not for sale),
@@ -20,7 +21,16 @@ use Anikeen\Id\Support\AppRequest;
  * low_stock, storage_location (shelf in the default warehouse), stocks (per warehouse: warehouse_id,
  * stock_on_hand, stock_reserved, stock_blocked, stock_available, storage_location), price_bound
  * (fixed book price: the same in every sales channel), weight_grams, metadata (the app's own data),
- * safety, created_at, updated_at and deleted_at.
+ * safety, created_at, updated_at and deleted_at; services also carry family (the app's product
+ * family, e.g. "server"), monthly_cap (net, at most this per calendar month; hour and day units),
+ * options (the app's plan options, e.g. cores and memory) and coupon_required (sold only with a
+ * coupon).
+ *
+ * Services (kind `service`, e.g. the servers, domains and storage of a hosting app) are sold with
+ * subscriptions: `product_id` on AppSubscriptions::create() and checkout sessions, and Anikeen ID
+ * computes the price (list price → best offer → reseller discount or coupon, see price()). Meter
+ * products (services with unit gigabyte or gibibyte) price usage records
+ * (AppSubscription::recordUsage()). Services have no stock and are never price-bound.
  *
  * A sales channel (an app that sells another app's catalog, set up in the Anikeen ID admin) reads
  * that catalog with the same methods, read-only: products of its assortment with its price
@@ -58,6 +68,8 @@ class AppInventory
      *     sku?: string,
      *     search?: string,
      *     available?: bool,
+     *     kind?: string,
+     *     family?: string,
      *     low_stock?: bool,
      *     updated_since?: string,
      *     with_trashed?: bool
@@ -65,6 +77,8 @@ class AppInventory
      *   - sku:           Exactly this SKU
      *   - search:        Part of the name, or the beginning of the SKU
      *   - available:     Only products that can (true) or can't (false) be ordered
+     *   - kind:          Only goods or only services (ProductKind::GOODS, ProductKind::SERVICE)
+     *   - family:        Only services of this product family, e.g. "server"
      *   - low_stock:     Only tracked products whose available stock is at or below their low_stock_threshold
      *   - updated_since: Only products changed since this date (ISO 8601), e.g. to sync a cache
      *   - with_trashed:  Include deleted products
@@ -106,17 +120,23 @@ class AppInventory
     }
 
     /**
-     * Creates a product. New products track their stock; `stock_on_hand` books the initial
-     * stock as an inventory count.
+     * Creates a product. New goods track their stock; `stock_on_hand` books the initial
+     * stock as an inventory count. A service (`kind` service) has no stock: send its unit, and
+     * optionally family, monthly_cap, options and coupon_required.
      *
      * @param array{
      *     sku: string,
      *     name: string,
-     *     type: string,
+     *     type?: string,
+     *     kind?: string,
      *     price?: float|int|string,
      *     gross_price?: float|int|string,
      *     description?: null|string,
      *     unit?: string,
+     *     family?: null|string,
+     *     monthly_cap?: null|float|string,
+     *     options?: null|array,
+     *     coupon_required?: bool,
      *     image_url?: null|string,
      *     available?: bool,
      *     price_bound?: bool,
@@ -137,10 +157,20 @@ class AppInventory
      * } $attributes The product:
      *   - sku:                 The app's article number (max. 100 characters), unique per app
      *   - name:                Shown on the order and invoice (max. 255 characters)
-     *   - type:                digital, physical or physical-reduced (VAT category of the order item)
+     *   - type:                digital, physical or physical-reduced (VAT category of the order item;
+     *                          required for goods, services default to digital)
+     *   - kind:                goods (default) or service (ProductKind)
      *   - price/gross_price:   Net or gross unit price, one of both
      *   - description:         Shown under the name (max. 255 characters, optional)
-     *   - unit:                piece (default) or onetime
+     *   - unit:                Goods: piece (default) or onetime. Services (required): hour, day,
+     *                          week, month, year, onetime, gigabyte or gibibyte (meter products)
+     *   - family:              Services: the app's product family, e.g. "server" ([a-z0-9_.-],
+     *                          max. 64); reseller discounts can be per family
+     *   - monthly_cap:         Services with unit hour or day: net, at most this per calendar month
+     *                          (2 decimals, not below the price; null = no cap)
+     *   - options:             Services: the app's plan options, e.g. cores, memory, GPU (any JSON
+     *                          object, max. 50 keys)
+     *   - coupon_required:     Services: sold only with a coupon naming the product (default false)
      *   - image_url:           Picture for orders and invoices (optional)
      *   - available:           Whether it can be ordered (default true)
      *   - price_bound:         Fixed book price (Buchpreisbindung): the same in every sales channel and
@@ -199,6 +229,97 @@ class AppInventory
     public function updateProduct(string $id, array $attributes): object
     {
         return AppRequest::send('PATCH', sprintf('v1/client/products/%s', $id), $attributes)->data;
+    }
+
+    /**
+     * What a service costs one customer for a new subscription, as Anikeen ID computes it: the list
+     * price, then the best running offer, then the reseller discount of $group (the reseller pays
+     * the lower of reseller and offer price, never a coupon on top) or a percentage coupon off the
+     * offer price. The monthly cap is cut in the same proportion. A subscription created with the
+     * same `product_id`, `group` and `coupon_code` gets this price as its contract price.
+     *
+     * @param string|null $userId The customer (offers for one customer; checks coupon uses)
+     * @param string|null $group The subscription group, e.g. a team (offers and reseller discounts
+     *                           for it)
+     * @param string|null $couponCode A coupon the customer entered
+     * @return object {product_id, unit, list_price, list_monthly_cap, price, monthly_cap,
+     *                offer: ?{id, name, type, amount}, reseller_discount: ?{id, family, percent},
+     *                coupon: ?{id, code, type, amount}} (net prices)
+     *
+     * @throws ApiException 404 "product_not_found"; 422 with a PricingError code
+     *                      (isPricingError()): product_not_a_service, product_unavailable,
+     *                      coupon_invalid, coupon_expired, coupon_used_up, coupon_not_applicable,
+     *                      coupon_not_allowed, coupon_required
+     */
+    public function price(string $productId, ?string $userId = null, ?string $group = null, ?string $couponCode = null): object
+    {
+        return AppRequest::send('GET', sprintf('v1/client/products/%s/price', $productId), null, array_filter([
+            'user_id' => $userId,
+            'group' => $group,
+            'coupon_code' => $couponCode,
+        ], fn ($value) => $value !== null && $value !== ''))->data;
+    }
+
+    /**
+     * The reseller discounts of the app's services: percent off the list price for a reseller's
+     * subscription group (e.g. a team), per product family or (family null) for all services.
+     * The family's own discount beats the one for all; of those, the newest already valid.
+     *
+     * @param array{group?: string, family?: string} $filters Only discounts of this group / family
+     * @return list<object> each {id, group, family, percent, valid_from, created_at, updated_at}
+     *
+     * @throws ApiException
+     */
+    public function resellerDiscounts(array $filters = []): array
+    {
+        return $this->allPages('v1/client/reseller-discounts', $filters);
+    }
+
+    /**
+     * The reseller discount, or null if the app has none with this ID.
+     *
+     * @throws ApiException
+     */
+    public function resellerDiscount(string $id): ?object
+    {
+        return $this->findOrNull(sprintf('v1/client/reseller-discounts/%s', $id));
+    }
+
+    /**
+     * Gives a reseller's group a discount on the app's services. It applies to subscriptions
+     * created from then on; running ones keep their contract price.
+     *
+     * @param array{group: string, percent: float|int|string, family?: null|string, valid_from?: string} $attributes
+     *   - group:      The subscription group of the reseller, e.g. the team ID
+     *   - percent:    Off the list price (more than 0, at most 100, 2 decimals)
+     *   - family:     Only services of this product family (null: all services)
+     *   - valid_from: From this date on (ISO 8601; default now)
+     *
+     * @throws ApiException 422 validation
+     */
+    public function createResellerDiscount(array $attributes): object
+    {
+        return AppRequest::send('POST', 'v1/client/reseller-discounts', $attributes)->data;
+    }
+
+    /**
+     * Changes fields of a reseller discount (new subscriptions only).
+     *
+     * @throws ApiException 404 "reseller_discount_not_found"
+     */
+    public function updateResellerDiscount(string $id, array $attributes): object
+    {
+        return AppRequest::send('PATCH', sprintf('v1/client/reseller-discounts/%s', $id), $attributes)->data;
+    }
+
+    /**
+     * Removes a reseller discount (running subscriptions keep their contract price).
+     *
+     * @throws ApiException 404 "reseller_discount_not_found"
+     */
+    public function deleteResellerDiscount(string $id): void
+    {
+        AppRequest::send('DELETE', sprintf('v1/client/reseller-discounts/%s', $id));
     }
 
     /**

@@ -1,6 +1,33 @@
 # Changelog
 
-## Unreleased
+## 3.11.0-beta.2 (2026-11-27)
+
+Service products and catalog prices (envoyr/anikeen-tasks#207, epic #205); needs the identity
+release with service products (anikeen-com/identity#263, on staging).
+
+### Added
+
+- Products document `kind` (`goods`|`service`, `Enums\ProductKind`) and, for services, the units
+  hour/day/week/month/year/onetime/gigabyte/gibibyte, `family`, `monthly_cap`, `options` (plan
+  options) and `coupon_required`. `AppInventory::products()` filters `kind` and `family`;
+  `createProduct()` documents the service fields (`type` defaults to `digital` for services).
+- `AppInventory::price($productId, $userId, $group, $couponCode)` (`GET client/products/{id}/price`):
+  what a service costs one customer as Anikeen ID computes it – list price, offer, reseller discount
+  or coupon, net price and monthly cap.
+- Reseller discounts (`client/reseller-discounts`): `AppInventory::resellerDiscounts()`,
+  `resellerDiscount()`, `createResellerDiscount()`, `updateResellerDiscount()`,
+  `deleteResellerDiscount()`.
+- App subscriptions and checkout session items take `product_id` (+ `coupon_code`) instead of
+  name/unit/price: Anikeen ID takes them from the catalog and computes the contract price. Responses
+  carry `product_id`, `coupon_id` and `pricing` (`AppSubscription` properties). `change()` takes
+  `product_id`/`coupon_code` (a plan change to another service).
+- Metered usage: `AppSubscription::recordUsage()` (inline `unit`/`unit_price` or a meter product's
+  `product_id`), `usageRecords()` and `voidUsage()` (`client/subscriptions/{id}/usage`).
+- `ApiException::isPricingError($code = null)` and `Enums\PricingError`: the 422 codes
+  `product_not_found`, `product_not_a_service`, `product_unavailable`, `product_not_recurring`,
+  `product_not_metered`, `coupon_invalid`, `coupon_expired`, `coupon_used_up`,
+  `coupon_not_applicable`, `coupon_not_allowed`, `coupon_required`.
+- README: services and catalog prices.
 
 ### Changed
 
