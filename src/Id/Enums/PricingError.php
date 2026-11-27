@@ -10,7 +10,10 @@ namespace Anikeen\Id\Enums;
  */
 class PricingError
 {
-    /** The product is not in the app's catalog. */
+    /**
+     * The product is not in the app's catalog (subscriptions, checkout sessions; AppInventory::price()
+     * answers an unknown product with 404 instead, see ApiException::isNotFound()).
+     */
     const PRODUCT_NOT_FOUND = 'product_not_found';
 
     /** The product is goods: only services are sold with subscriptions (goods with orders). */
@@ -66,8 +69,8 @@ class PricingError
     /**
      * Whether the code is about the coupon (the rest is about the product).
      */
-    public static function isCouponError(string $code): bool
+    public static function isCouponError(?string $code): bool
     {
-        return str_starts_with($code, 'coupon_');
+        return $code !== null && in_array($code, self::all(), true) && str_starts_with($code, 'coupon_');
     }
 }

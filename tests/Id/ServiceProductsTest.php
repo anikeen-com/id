@@ -125,6 +125,8 @@ class ServiceProductsTest extends TestCase
         $this->assertFalse((new ApiException('Invalid', 422, 'price_changed'))->isPricingError());
         $this->assertTrue((new ApiException('Invalid', 422, 'product_not_a_service'))->isPricingError());
         $this->assertFalse(PricingError::isCouponError(PricingError::PRODUCT_UNAVAILABLE));
+        $this->assertFalse(PricingError::isCouponError(null));
+        $this->assertFalse(PricingError::isCouponError('coupon_something_else'));
     }
 
     public function test_reseller_discounts_crud(): void

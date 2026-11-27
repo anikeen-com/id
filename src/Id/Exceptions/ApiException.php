@@ -122,7 +122,8 @@ class ApiException extends ResourceException
      * Anikeen ID refused to sell a catalog service as asked (422 with a PricingError code in
      * `error`): an unknown, unavailable or non-recurring product, or a coupon that doesn't apply.
      * From AppInventory::price(), subscriptions and checkout sessions with `product_id`, and usage
-     * records with `product_id`. $code narrows it to one code, e.g. PricingError::COUPON_EXPIRED;
+     * records with `product_id` (price() answers an unknown product with 404, isNotFound()).
+     * `change()` with `product_id` reports refusals as plain field errors without `error`. $code narrows it to one code, e.g. PricingError::COUPON_EXPIRED;
      * PricingError::isCouponError($e->error) tells coupon from product problems. Nothing was
      * created.
      */

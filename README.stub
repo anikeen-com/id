@@ -1100,7 +1100,8 @@ discounts apply to new subscriptions only. A catalog subscription can't take an 
 group. Refusals are `422` with `error` (`PricingError`): `product_not_found`,
 `product_not_a_service`, `product_unavailable`, `product_not_recurring`, `product_not_metered`,
 `coupon_invalid`, `coupon_expired`, `coupon_used_up`, `coupon_not_applicable`,
-`coupon_not_allowed`, `coupon_required`; `errors()` names the field (`product_id` or `coupon_code`,
+`coupon_not_allowed`, `coupon_required` (`price()` answers an unknown product with `404` instead,
+`isNotFound()`); `errors()` names the field (`product_id` or `coupon_code`,
 in checkout sessions `subscriptions.<n>.…`). `change()` with `product_id` currently reports
 them as plain field errors (`errors()` on `product_id`/`coupon_code`, `error` is `null`).
 `product.updated` also reports changes of `kind`,
