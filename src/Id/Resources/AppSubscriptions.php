@@ -38,12 +38,21 @@ class AppSubscriptions
     /**
      * Create a subscription for the user (it is billed only after checkout()).
      *
+     * Either inline (name, unit, price) or from a service of the app's catalog (`product_id`,
+     * optionally `coupon_code`): then Anikeen ID takes name, unit and monthly cap from the product
+     * and computes the price (list price → offer → reseller discount of `group` or coupon, see
+     * AppInventory::price()). That price is the contract price: catalog changes apply to new
+     * subscriptions only. The subscription has `product_id`, `coupon_id` and `pricing` (how the
+     * price was made).
+     *
      * @param array{
      *     group?: null|string,
-     *     name: string,
+     *     product_id?: null|string,
+     *     coupon_code?: null|string,
+     *     name?: string,
      *     description?: null|string,
-     *     unit: string,
-     *     price: float|string,
+     *     unit?: string,
+     *     price?: float|string,
      *     monthly_cap?: null|float|string,
      *     predecessor_id?: null|string,
      *     vat_rate?: float,
@@ -57,6 +66,10 @@ class AppSubscriptions
      *     idempotency_key?: null|string
      * } $attributes With an idempotency_key (max. 191 characters), a retried call returns the
      *               subscription created by the first one instead of a duplicate.
+     *               product_id: a service of the app's catalog (prohibits unit, price, monthly_cap
+     *               and discount); name and description default to the product's, sent ones win
+     *               (e.g. the server's own name). coupon_code: a coupon the customer entered (only
+     *               with product_id). Without product_id, name, unit and price are required.
      *               monthly_cap: net, at most this per calendar month (hour and day units only,
      *               at most 2 decimals, not below price; null = no cap).
      *               predecessor_id: the subscription this one replaces (a resize; same user and
@@ -75,7 +88,8 @@ class AppSubscriptions
      *               billed period), `repeating` (duration_in_periods billed periods) or
      *               `forever`. Not combinable with a monthly_cap.
      *
-     * @throws ApiException 422 validation, 409 "idempotency_key_conflict", …
+     * @throws ApiException 422 validation or a PricingError code (isPricingError(), e.g.
+     *                      coupon_expired), 409 "idempotency_key_conflict", …
      */
     public function create(array $attributes): AppSubscription
     {
